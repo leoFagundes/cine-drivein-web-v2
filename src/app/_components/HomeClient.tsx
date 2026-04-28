@@ -162,7 +162,8 @@ export default function HomeClient() {
           setLocLoading(false);
           setShowLocation(false);
           toastError(
-            "Infelizmente você não comaprtilhou sua localização. Nos chame no WhatsApp para concluir o pedido",
+            "Não conseguimos acessar sua localização.",
+            "Fale com a gente no WhatsApp para concluir seu pedido.",
           );
         } else {
           // POSITION_UNAVAILABLE (2) ou TIMEOUT (3) — não foi escolha do usuário,
