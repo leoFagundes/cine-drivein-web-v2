@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   collection,
   doc,
@@ -37,6 +37,33 @@ export default function CardapioClient() {
   const [selectedItem, setSelectedItem] = useState<StockItem | null>(null);
   const [cart, setCart] = useState<CartItem[]>(loadCart);
   const [loading, setLoading] = useState(true);
+  const pushedHistory = useRef(false);
+
+  // Intercept browser back button while inside item/cart view
+  useEffect(() => {
+    if (view !== "menu" && !pushedHistory.current) {
+      window.history.pushState(null, "");
+      pushedHistory.current = true;
+    }
+    if (view === "menu") pushedHistory.current = false;
+  }, [view]);
+
+  useEffect(() => {
+    function handlePop() {
+      setView("menu");
+      setSelectedItem(null);
+      pushedHistory.current = false;
+    }
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
+
+  // Redirect to home if store closes while browsing
+  useEffect(() => {
+    return onSnapshot(doc(db, "storeConfig", "main"), (snap) => {
+      if (snap.exists() && snap.data().isOpen === false) router.push("/");
+    });
+  }, [router]);
 
   useEffect(() => {
     getDoc(doc(db, "stockConfig", "categoryOrder")).then((snap) => {

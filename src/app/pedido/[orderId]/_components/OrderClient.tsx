@@ -37,6 +37,7 @@ interface Order {
   subtotal: number
   serviceFee: number
   total: number
+  distanceMeters: number | null
 }
 
 interface ChatMessage {
@@ -233,7 +234,7 @@ export default function OrderClient({ orderId, isNew }: { orderId: string; isNew
         {/* Scrollable body */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto"
+          className="flex-1 overflow-y-auto min-h-0 overscroll-y-contain"
           onScroll={() => { if (isNearBottom()) { setUnread(0); bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) } }}
         >
 

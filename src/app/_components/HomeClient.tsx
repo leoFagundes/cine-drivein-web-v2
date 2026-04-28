@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { collection, doc, onSnapshot, query, where, documentId } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  query,
+  where,
+  documentId,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { StoreStatus } from "@/types";
 import SpotHelpModal from "./SpotHelpModal";
+import LocationModal from "./LocationModal";
 import { FaWhatsapp, FaChevronRight, FaReceipt } from "react-icons/fa";
 import { BsInfoCircleFill } from "react-icons/bs";
 
@@ -55,7 +63,75 @@ export default function HomeClient() {
   const [spot, setSpot] = useState("");
   const [error, setError] = useState("");
   const [spotModalOpen, setSpotModalOpen] = useState(false);
-  const [activeOrders, setActiveOrders] = useState<{ id: string; number: number }[]>([]);
+  const [activeOrders, setActiveOrders] = useState<
+    { id: string; number: number }[]
+  >([]);
+  const [showLocation, setShowLocation] = useState(false);
+  const [locLoading, setLocLoading] = useState(false);
+
+  function getDistanceInKm(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ) {
+    const R = 6371; // raio da Terra em km
+
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+  }
+
+  function handleAllowLocation() {
+    setLocLoading(true);
+
+    if (!navigator.geolocation) {
+      router.push("/cardapio");
+      setLocLoading(false);
+      setShowLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        const targetLat = -15.778017634025696;
+        const targetLng = -47.89792262166641;
+        const distanceMeters = Math.round(
+          getDistanceInKm(latitude, longitude, targetLat, targetLng) * 1000,
+        );
+        localStorage.setItem(
+          "@cinedrive:userLocation",
+          JSON.stringify({
+            latitude,
+            longitude,
+            accuracy,
+            distanceMeters,
+            timestamp: Date.now(),
+          }),
+        );
+        router.push("/cardapio");
+        setLocLoading(false);
+        setShowLocation(false);
+      },
+      () => {
+        router.push("/cardapio");
+        setLocLoading(false);
+        setShowLocation(false);
+      },
+      { timeout: 8000 },
+    );
+  }
 
   useEffect(() => {
     type SavedOrder = { id: string; number: number };
@@ -111,7 +187,7 @@ export default function HomeClient() {
       return;
     }
     sessionStorage.setItem("@cinedrive:spot", spot);
-    router.push("/cardapio");
+    setShowLocation(true);
   }
 
   if (config === null) {
@@ -124,62 +200,70 @@ export default function HomeClient() {
 
   if (!config.isOpen) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-dvh gap-5 px-6 text-center bg-(--bg)">
-        <Logo />
-        {activeOrders.length > 0 && (
-          <div className="w-full max-w-xs flex flex-col gap-2">
-            {activeOrders.map((order) => (
-              <button
-                key={order.id}
-                onClick={() => router.push(`/pedido?id=${order.id}`)}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-(--primary)/10 border border-(--primary)/30 cursor-pointer text-left"
-              >
-                <div className="w-9 h-9 rounded-full bg-(--primary)/15 flex items-center justify-center shrink-0">
-                  <FaReceipt size={15} className="text-(--primary)" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-(--primary) font-bold text-sm m-0 leading-snug">
-                    Pedido #{order.number} em andamento
-                  </p>
-                  <p className="text-(--text-muted) text-xs m-0 mt-0.5 leading-snug">
-                    Toque para acompanhar e conversar
-                  </p>
-                </div>
-                <FaChevronRight size={12} className="text-(--primary) shrink-0" />
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="flex flex-col gap-1.5">
-          <h2 className="text-(--text-primary) text-xl font-bold m-0">
-            Estamos Fechados
-          </h2>
-          <p className="text-(--text-secondary) text-sm m-0">
-            Horário de Funcionamento da Lanchonete:
-          </p>
-          {config.openingTime && config.closingTime && (
-            <p className="text-(--text-primary) text-[15px] m-0">
-              de <strong>{config.openingTime}</strong> até{" "}
-              <strong>{config.closingTime}</strong>
-            </p>
+      <>
+        <div className="flex flex-col items-center justify-center min-h-dvh gap-5 px-6 text-center bg-(--bg)">
+          <Logo />
+          {activeOrders.length > 0 && (
+            <div className="w-full max-w-xs flex flex-col gap-2">
+              {activeOrders.map((order) => (
+                <button
+                  key={order.id}
+                  onClick={() => router.push(`/pedido?id=${order.id}`)}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl bg-(--primary)/10 border border-(--primary)/30 cursor-pointer text-left"
+                >
+                  <div className="w-9 h-9 rounded-full bg-(--primary)/15 flex items-center justify-center shrink-0">
+                    <FaReceipt size={15} className="text-(--primary)" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-(--primary) font-bold text-sm m-0 leading-snug">
+                      Pedido #{order.number} em andamento
+                    </p>
+                    <p className="text-(--text-muted) text-xs m-0 mt-0.5 leading-snug">
+                      Toque para acompanhar e conversar
+                    </p>
+                  </div>
+                  <FaChevronRight
+                    size={12}
+                    className="text-(--primary) shrink-0"
+                  />
+                </button>
+              ))}
+            </div>
           )}
+          <div className="flex flex-col gap-1.5">
+            <h2 className="text-(--text-primary) text-xl font-bold m-0">
+              Estamos Fechados
+            </h2>
+            <p className="text-(--text-secondary) text-sm m-0">
+              Horário de Funcionamento da Lanchonete:
+            </p>
+            {config.openingTime && config.closingTime && (
+              <p className="text-(--text-primary) text-[15px] m-0">
+                de <strong>{config.openingTime}</strong> até{" "}
+                <strong>{config.closingTime}</strong>
+              </p>
+            )}
+          </div>
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-sm text-(--primary) no-underline"
+          >
+            <FaWhatsapp size={16} /> Precisa de Ajuda?
+          </a>
         </div>
-        <a
-          href={WHATSAPP_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1.5 text-sm text-(--primary) no-underline"
-        >
-          <FaWhatsapp size={16} /> Precisa de Ajuda?
-        </a>
-      </div>
+        {showLocation && (
+          <LocationModal onAllow={handleAllowLocation} loading={locLoading} />
+        )}
+      </>
     );
   }
 
   return (
     <>
-      <div className="flex flex-col items-center justify-center min-h-dvh gap-6 px-6 py-10 bg-(--bg)">
-        <Logo />
+      <div className="flex flex-col items-center justify-center min-h-dvh gap-4 px-6 py-10 bg-(--bg)">
+        <img src="images/logo-drivein.svg" alt="logo" />
         {activeOrders.length > 0 && (
           <div className="w-full max-w-xs flex flex-col gap-2">
             {activeOrders.map((order) => (
@@ -199,7 +283,10 @@ export default function HomeClient() {
                     Toque para acompanhar e conversar
                   </p>
                 </div>
-                <FaChevronRight size={12} className="text-(--primary) shrink-0" />
+                <FaChevronRight
+                  size={12}
+                  className="text-(--primary) shrink-0"
+                />
               </button>
             ))}
           </div>
@@ -258,7 +345,7 @@ export default function HomeClient() {
           {error && <p className="text-(--error) text-sm m-0">{error}</p>}
           <button
             type="submit"
-            className="w-full py-3.5 mt-1 rounded-lg bg-(--primary) text-white font-semibold text-[15px] border-none cursor-pointer"
+            className="w-full py-3.5 mt-3 rounded-lg bg-(--primary) text-white font-semibold text-[15px] border-none cursor-pointer"
           >
             Ir para o cardápio
           </button>
@@ -274,6 +361,9 @@ export default function HomeClient() {
       </div>
       {spotModalOpen && (
         <SpotHelpModal onClose={() => setSpotModalOpen(false)} />
+      )}
+      {showLocation && (
+        <LocationModal onAllow={handleAllowLocation} loading={locLoading} />
       )}
     </>
   );

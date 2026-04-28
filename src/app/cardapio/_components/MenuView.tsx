@@ -162,7 +162,10 @@ export default function MenuView({
             {["Tudo", ...orderedCats].map((cat) => (
               <button
                 key={cat}
-                onClick={() => onSelectCategory(cat)}
+                onClick={(e) => {
+                  onSelectCategory(cat)
+                  e.currentTarget.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' })
+                }}
                 className={`bg-transparent border-none border-b-2 text-sm px-3.5 py-3 cursor-pointer whitespace-nowrap transition-colors duration-150 ${
                   selectedCategory === cat
                     ? "text-(--primary) border-b-(--primary) font-semibold"

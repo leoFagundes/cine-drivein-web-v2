@@ -99,6 +99,11 @@ export default function CartView({
         additionals_sweet: item.additionals_sweet ?? [],
       }));
 
+      const locationData = (() => {
+        try { return JSON.parse(localStorage.getItem("@cinedrive:userLocation") ?? "null"); } catch { return null; }
+      })();
+      const distanceMeters: number | null = locationData?.distanceMeters ?? null;
+
       const orderRef = await addDoc(collection(db, "orders"), {
         orderNumber,
         username: name,
@@ -111,6 +116,7 @@ export default function CartView({
         serviceFeePaid: false,
         discount: 0,
         total,
+        distanceMeters,
         createdAt: serverTimestamp(),
       });
 
