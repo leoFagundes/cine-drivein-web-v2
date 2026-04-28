@@ -153,12 +153,16 @@ export default function HomeClient() {
         );
       },
       (err) => {
-        // Error cases on mobile:
-        // 1 = PERMISSION_DENIED  (user tapped "Não permitir")
-        // 2 = POSITION_UNAVAILABLE (GPS off, airplane mode, etc.)
-        // 3 = TIMEOUT
         console.warn("Geolocation error:", err.code, err.message);
-        saveLocationAndProceed(router, setLocLoading, setShowLocation);
+        if (err.code === 1) {
+          // PERMISSION_DENIED — user explicitly said não, fica na tela inicial
+          setLocLoading(false);
+          setShowLocation(false);
+        } else {
+          // POSITION_UNAVAILABLE (2) ou TIMEOUT (3) — não foi escolha do usuário,
+          // segue para o cardápio sem localização
+          saveLocationAndProceed(router, setLocLoading, setShowLocation);
+        }
       },
       {
         timeout: 10000, // 10s — mobile GPS can be slower than desktop
