@@ -55,6 +55,70 @@ function fromStorage(key: string): string {
   return localStorage.getItem(key) ?? "";
 }
 
+function getDistanceInKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const TARGET_LAT = -15.778017634025696;
+const TARGET_LNG = -47.89792262166641;
+
+/** Saves location data and navigates to /cardapio */
+function saveLocationAndProceed(
+  router: ReturnType<typeof useRouter>,
+  setLocLoading: (v: boolean) => void,
+  setShowLocation: (v: boolean) => void,
+  position?: GeolocationPosition,
+) {
+  if (position) {
+    const { latitude, longitude, accuracy } = position.coords;
+    const distanceMeters = Math.round(
+      getDistanceInKm(latitude, longitude, TARGET_LAT, TARGET_LNG) * 1000,
+    );
+    localStorage.setItem(
+      "@cinedrive:userLocation",
+      JSON.stringify({
+        latitude,
+        longitude,
+        accuracy,
+        distanceMeters,
+        timestamp: Date.now(),
+      }),
+    );
+  } else {
+    // Permission denied or geolocation unavailable — save an explicit null entry
+    // so downstream code knows a location attempt was made but failed.
+    localStorage.setItem(
+      "@cinedrive:userLocation",
+      JSON.stringify({
+        latitude: null,
+        longitude: null,
+        accuracy: null,
+        distanceMeters: null,
+        denied: true,
+        timestamp: Date.now(),
+      }),
+    );
+  }
+
+  router.push("/cardapio");
+  setLocLoading(false);
+  setShowLocation(false);
+}
+
 export default function HomeClient() {
   const router = useRouter();
   const [config, setConfig] = useState<StoreStatus | null>(null);
@@ -69,67 +133,38 @@ export default function HomeClient() {
   const [showLocation, setShowLocation] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
 
-  function getDistanceInKm(
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number,
-  ) {
-    const R = 6371; // raio da Terra em km
-
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) *
-        Math.cos(lat2 * (Math.PI / 180)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  }
-
   function handleAllowLocation() {
     setLocLoading(true);
 
     if (!navigator.geolocation) {
-      router.push("/cardapio");
-      setLocLoading(false);
-      setShowLocation(false);
+      // Browser doesn't support geolocation at all
+      saveLocationAndProceed(router, setLocLoading, setShowLocation);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        const targetLat = -15.778017634025696;
-        const targetLng = -47.89792262166641;
-        const distanceMeters = Math.round(
-          getDistanceInKm(latitude, longitude, targetLat, targetLng) * 1000,
+        // Success: got coordinates
+        saveLocationAndProceed(
+          router,
+          setLocLoading,
+          setShowLocation,
+          position,
         );
-        localStorage.setItem(
-          "@cinedrive:userLocation",
-          JSON.stringify({
-            latitude,
-            longitude,
-            accuracy,
-            distanceMeters,
-            timestamp: Date.now(),
-          }),
-        );
-        router.push("/cardapio");
-        setLocLoading(false);
-        setShowLocation(false);
       },
-      () => {
-        router.push("/cardapio");
-        setLocLoading(false);
-        setShowLocation(false);
+      (err) => {
+        // Error cases on mobile:
+        // 1 = PERMISSION_DENIED  (user tapped "Não permitir")
+        // 2 = POSITION_UNAVAILABLE (GPS off, airplane mode, etc.)
+        // 3 = TIMEOUT
+        console.warn("Geolocation error:", err.code, err.message);
+        saveLocationAndProceed(router, setLocLoading, setShowLocation);
       },
-      { timeout: 8000 },
+      {
+        timeout: 10000, // 10s — mobile GPS can be slower than desktop
+        maximumAge: 60_000, // accept a cached position up to 1 min old
+        enableHighAccuracy: false, // don't wait for full GPS lock; network/wifi is fine
+      },
     );
   }
 
@@ -167,6 +202,7 @@ export default function HomeClient() {
   useEffect(() => {
     localStorage.setItem("@cinedrive:name", name.trim());
   }, [name]);
+
   useEffect(() => {
     localStorage.setItem("@cinedrive:phone", phone);
   }, [phone]);
