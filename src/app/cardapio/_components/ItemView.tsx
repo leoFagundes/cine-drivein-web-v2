@@ -1,79 +1,95 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Image from 'next/image'
-import { FaArrowLeft, FaCheck } from 'react-icons/fa'
-import type { StockItem, CartItem, Subitem, AdditionalGroup } from '@/types'
+import { useState } from "react";
+import Image from "next/image";
+import { FaArrowLeft, FaCheck } from "react-icons/fa";
+import type { StockItem, CartItem, Subitem, AdditionalGroup } from "@/types";
 
 function formatBRL(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function getPrice(item: StockItem) {
-  return item.visibleValue ?? item.value
+  return item.visibleValue ?? item.value;
 }
 
 const GROUPS: { key: AdditionalGroup; label: string }[] = [
-  { key: 'additionals', label: 'Acompanhamentos' },
-  { key: 'additionals_sauce', label: 'Molho' },
-  { key: 'additionals_drink', label: 'Bebida' },
-  { key: 'additionals_sweet', label: 'Sobremesa' },
-]
+  { key: "additionals", label: "Acompanhamentos" },
+  { key: "additionals_sauce", label: "Molho" },
+  { key: "additionals_drink", label: "Bebida" },
+  { key: "additionals_sweet", label: "Sobremesa" },
+];
 
 function Placeholder() {
   return (
     <div className="w-full h-full flex items-center justify-center bg-(--bg-elevated)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="w-16 h-16 text-(--text-muted) opacity-15">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-16 h-16 text-(--text-muted) opacity-15"
+      >
         <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M7 2v20M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3v7" />
       </svg>
     </div>
-  )
+  );
 }
 
 interface Props {
-  item: StockItem
-  subitems: Subitem[]
-  onBack: () => void
-  onAdd: (item: CartItem) => void
+  item: StockItem;
+  subitems: Subitem[];
+  onBack: () => void;
+  onAdd: (item: CartItem) => void;
 }
 
 export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
-  const [observation, setObservation] = useState('')
-  const [quantity, setQuantity] = useState(1)
-  const [selections, setSelections] = useState<Record<AdditionalGroup, string | null>>({
+  const [observation, setObservation] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [selections, setSelections] = useState<
+    Record<AdditionalGroup, string | null>
+  >({
     additionals: null,
     additionals_sauce: null,
     additionals_drink: null,
     additionals_sweet: null,
-  })
-  const [formError, setFormError] = useState('')
+  });
+  const [formError, setFormError] = useState("");
 
-  const price = getPrice(item)
+  const price = getPrice(item);
 
   function select(group: AdditionalGroup, id: string) {
-    setFormError('')
-    setSelections((prev) => ({ ...prev, [group]: prev[group] === id ? null : id }))
+    setFormError("");
+    setSelections((prev) => ({
+      ...prev,
+      [group]: prev[group] === id ? null : id,
+    }));
   }
 
   function getSelectedName(group: AdditionalGroup): string[] {
-    const id = selections[group]
-    if (!id) return []
-    const sub = subitems.find((s) => s.id === id)
-    return sub ? [sub.name] : []
+    const id = selections[group];
+    if (!id) return [];
+    const sub = subitems.find((s) => s.id === id);
+    return sub ? [sub.name] : [];
   }
 
   function handleAdd() {
     for (const { key, label } of GROUPS) {
-      const groupIds = item[key]
-      if (groupIds.length === 0) continue
-      const available = subitems.filter((s) => groupIds.includes(s.id) && s.isVisible)
+      const groupIds = item[key];
+      if (groupIds.length === 0) continue;
+      const available = subitems.filter(
+        (s) => groupIds.includes(s.id) && s.isVisible,
+      );
       if (available.length > 0 && !selections[key]) {
-        setFormError(`Escolha uma opção para "${label}".`)
-        return
+        setFormError(`Escolha uma opção para "${label}".`);
+        return;
       }
     }
 
     onAdd({
+      // eslint-disable-next-line react-hooks/purity
       draftId: `${item.id}-${Date.now()}`,
       itemId: item.id,
       codItem: item.codItem,
@@ -82,23 +98,38 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
       quantity,
       photo: item.photo,
       observation: observation.trim() || undefined,
-      additionals: getSelectedName('additionals').length ? getSelectedName('additionals') : undefined,
-      additionals_sauce: getSelectedName('additionals_sauce').length ? getSelectedName('additionals_sauce') : undefined,
-      additionals_drink: getSelectedName('additionals_drink').length ? getSelectedName('additionals_drink') : undefined,
-      additionals_sweet: getSelectedName('additionals_sweet').length ? getSelectedName('additionals_sweet') : undefined,
-    })
+      additionals: getSelectedName("additionals").length
+        ? getSelectedName("additionals")
+        : undefined,
+      additionals_sauce: getSelectedName("additionals_sauce").length
+        ? getSelectedName("additionals_sauce")
+        : undefined,
+      additionals_drink: getSelectedName("additionals_drink").length
+        ? getSelectedName("additionals_drink")
+        : undefined,
+      additionals_sweet: getSelectedName("additionals_sweet").length
+        ? getSelectedName("additionals_sweet")
+        : undefined,
+    });
   }
 
   return (
-    <div className="min-h-dvh bg-(--bg) sm:bg-[#06080d] sm:flex sm:justify-center">
+    <div className="min-h-dvh bg-(--bg) sm:bg-[#181c25] sm:flex sm:justify-center">
       <div className="relative w-full max-w-130 bg-(--bg) min-h-dvh flex flex-col sm:shadow-2xl">
-
         {/* ── Image ───────────────────────────────────────────── */}
         <div className="relative shrink-0 h-72 sm:h-80 bg-(--bg-elevated)">
-          {item.photo
-            ? <Image src={item.photo} alt={item.name} fill sizes="520px" priority className="object-cover" />
-            : <Placeholder />
-          }
+          {item.photo ? (
+            <Image
+              src={item.photo}
+              alt={item.name}
+              fill
+              sizes="520px"
+              priority
+              className="object-cover"
+            />
+          ) : (
+            <Placeholder />
+          )}
 
           {/* bottom gradient so content card blends in */}
           <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-(--bg) to-transparent" />
@@ -114,7 +145,6 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
 
         {/* ── Content card (overlaps image) ───────────────────── */}
         <div className="-mt-10 rounded-t-3xl bg-(--bg) relative z-10 flex-1 flex flex-col">
-
           {/* drag-handle pill */}
           <div className="flex justify-center pt-3 pb-1 shrink-0">
             <div className="w-10 h-1 rounded-full bg-(--border)" />
@@ -122,7 +152,6 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
 
           {/* scrollable body */}
           <div className="flex-1 overflow-y-auto px-5 pt-3 pb-4 flex flex-col gap-5">
-
             {/* name + unit price */}
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-(--text-primary) text-2xl font-black leading-tight flex-1 m-0">
@@ -149,23 +178,27 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
 
             {/* ── Additionals ───────────────────────────────── */}
             {GROUPS.map(({ key, label }) => {
-              const groupIds = item[key]
-              if (groupIds.length === 0) return null
-              const available = subitems.filter((s) => groupIds.includes(s.id) && s.isVisible)
-              if (available.length === 0) return null
-              const selected = selections[key]
+              const groupIds = item[key];
+              if (groupIds.length === 0) return null;
+              const available = subitems.filter(
+                (s) => groupIds.includes(s.id) && s.isVisible,
+              );
+              if (available.length === 0) return null;
+              const selected = selections[key];
 
               return (
                 <div key={key} className="flex flex-col gap-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-(--text-primary) text-sm font-bold">{label}</span>
+                    <span className="text-(--text-primary) text-sm font-bold">
+                      {label}
+                    </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-(--error)/10 text-(--error)">
                       Obrigatório
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {available.map((sub) => {
-                      const isSelected = selected === sub.id
+                      const isSelected = selected === sub.id;
                       return (
                         <button
                           key={sub.id}
@@ -173,27 +206,35 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
                           onClick={() => select(key, sub.id)}
                           className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm border transition-all duration-150 cursor-pointer text-left font-medium ${
                             isSelected
-                              ? 'bg-(--primary)/12 border-(--primary) text-(--primary)'
-                              : 'bg-(--bg-elevated) border-(--border) text-(--text-secondary) hover:border-(--text-muted)'
+                              ? "bg-(--primary)/12 border-(--primary) text-(--primary)"
+                              : "bg-(--bg-elevated) border-(--border) text-(--text-secondary) hover:border-(--text-muted)"
                           }`}
                         >
-                          <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                            isSelected ? 'border-(--primary) bg-(--primary)' : 'border-(--border)'
-                          }`}>
-                            {isSelected && <FaCheck size={8} className="text-white" />}
+                          <span
+                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected
+                                ? "border-(--primary) bg-(--primary)"
+                                : "border-(--border)"
+                            }`}
+                          >
+                            {isSelected && (
+                              <FaCheck size={8} className="text-white" />
+                            )}
                           </span>
                           <span className="leading-snug">{sub.name}</span>
                         </button>
-                      )
+                      );
                     })}
                   </div>
                 </div>
-              )
+              );
             })}
 
             {/* ── Observation ───────────────────────────────── */}
             <div className="flex flex-col gap-2">
-              <span className="text-(--text-primary) text-sm font-bold">Observação</span>
+              <span className="text-(--text-primary) text-sm font-bold">
+                Observação
+              </span>
               <input
                 type="text"
                 placeholder="Ex: sem cebola, bem passado..."
@@ -223,7 +264,9 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
                 </button>
               </div>
               <div className="text-right">
-                <p className="text-(--text-muted) text-[10px] uppercase tracking-widest font-semibold m-0">Total</p>
+                <p className="text-(--text-muted) text-[10px] uppercase tracking-widest font-semibold m-0">
+                  Total
+                </p>
                 <p className="text-(--primary) font-black text-2xl m-0 leading-tight tabular-nums">
                   {formatBRL(price * quantity)}
                 </p>
@@ -232,9 +275,10 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
 
             {/* error */}
             {formError && (
-              <p className="text-(--error) text-sm text-center m-0">{formError}</p>
+              <p className="text-(--error) text-sm text-center m-0">
+                {formError}
+              </p>
             )}
-
           </div>
 
           {/* ── Bottom action bar ─────────────────────────────── */}
@@ -252,9 +296,8 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
               Adicionar ao pedido
             </button>
           </div>
-
         </div>
       </div>
     </div>
-  )
+  );
 }

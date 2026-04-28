@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { StockItem, CartItem, Subitem } from "@/types";
 import { useRouter } from "next/navigation";
@@ -40,13 +46,17 @@ export default function CardapioClient() {
 
   useEffect(() => {
     getDocs(collection(db, "subitems")).then((snap) => {
-      setSubitems(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Subitem[]);
+      setSubitems(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Subitem[],
+      );
     });
   }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "items"), (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StockItem[]);
+      setItems(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StockItem[],
+      );
       setLoading(false);
     });
     return unsub;
@@ -68,8 +78,10 @@ export default function CardapioClient() {
   function updateCartQuantity(draftId: string, delta: number) {
     persistCart(
       cart
-        .map((i) => (i.draftId === draftId ? { ...i, quantity: i.quantity + delta } : i))
-        .filter((i) => i.quantity > 0)
+        .map((i) =>
+          i.draftId === draftId ? { ...i, quantity: i.quantity + delta } : i,
+        )
+        .filter((i) => i.quantity > 0),
     );
   }
 

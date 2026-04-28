@@ -1,50 +1,65 @@
-'use client'
+"use client";
 
-import Image from 'next/image'
-import { FaArrowLeft, FaShoppingCart } from 'react-icons/fa'
-import type { StockItem, CartItem } from '@/types'
+import Image from "next/image";
+import { FaArrowLeft, FaShoppingCart } from "react-icons/fa";
+import type { StockItem, CartItem } from "@/types";
 
 function formatBRL(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function getPrice(item: StockItem) {
-  return item.visibleValue ?? item.value
+  return item.visibleValue ?? item.value;
 }
 
 function Placeholder() {
   return (
     <div className="w-full h-full flex items-center justify-center bg-(--bg-elevated)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7 text-(--text-muted) opacity-25">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-7 h-7 text-(--text-muted) opacity-25"
+      >
         <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M7 2v20M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3v7" />
       </svg>
     </div>
-  )
+  );
 }
 
 interface Props {
-  items: StockItem[]
-  categories: string[]
-  selectedCategory: string
-  cart: CartItem[]
-  onSelectCategory: (cat: string) => void
-  onSelectItem: (item: StockItem) => void
-  onOpenCart: () => void
-  onBack: () => void
+  items: StockItem[];
+  categories: string[];
+  selectedCategory: string;
+  cart: CartItem[];
+  onSelectCategory: (cat: string) => void;
+  onSelectItem: (item: StockItem) => void;
+  onOpenCart: () => void;
+  onBack: () => void;
 }
 
 function ItemCard({ item, onClick }: { item: StockItem; onClick: () => void }) {
-  const price = getPrice(item)
+  const price = getPrice(item);
   return (
     <button
       onClick={onClick}
       className="flex gap-3.5 w-full p-3.5 bg-(--bg-card) border border-(--border) rounded-xl cursor-pointer text-left transition-all duration-150 active:scale-[0.98] active:bg-(--bg-elevated) hover:border-(--border-focus)"
     >
       <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-(--bg-elevated)">
-        {item.photo
-          ? <Image src={item.photo} alt={item.name} fill sizes="96px" className="object-cover" />
-          : <Placeholder />
-        }
+        {item.photo ? (
+          <Image
+            src={item.photo}
+            alt={item.name}
+            fill
+            sizes="96px"
+            className="object-cover"
+          />
+        ) : (
+          <Placeholder />
+        )}
         {item.isFeatured && (
           <span className="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-(--gold) text-black leading-none">
             Destaque
@@ -67,29 +82,49 @@ function ItemCard({ item, onClick }: { item: StockItem; onClick: () => void }) {
         </p>
       </div>
     </button>
-  )
+  );
 }
 
-export default function MenuView({ items, categories, selectedCategory, cart, onSelectCategory, onSelectItem, onOpenCart, onBack }: Props) {
-  const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0)
-  const cartTotal = cart.reduce((sum, i) => sum + i.value * i.quantity, 0)
-  const visible = items.filter((i) => i.isVisible)
+export default function MenuView({
+  items,
+  categories,
+  selectedCategory,
+  cart,
+  onSelectCategory,
+  onSelectItem,
+  onOpenCart,
+  onBack,
+}: Props) {
+  const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+  const visible = items.filter((i) => i.isVisible);
 
-  const knownCats = new Set(categories)
+  const knownCats = new Set(categories);
   const orderedCats = [
     ...categories.filter((c) => visible.some((i) => i.category === c)),
-    ...visible.map((i) => i.category).filter((c) => !knownCats.has(c)).filter((c, idx, arr) => arr.indexOf(c) === idx),
-  ]
+    ...visible
+      .map((i) => i.category)
+      .filter((c) => !knownCats.has(c))
+      .filter((c, idx, arr) => arr.indexOf(c) === idx),
+  ];
 
   const sections =
-    selectedCategory === 'Tudo'
-      ? orderedCats.map((cat) => ({ title: cat, items: visible.filter((i) => i.category === cat) })).filter((s) => s.items.length > 0)
-      : [{ title: null, items: visible.filter((i) => i.category === selectedCategory) }]
+    selectedCategory === "Tudo"
+      ? orderedCats
+          .map((cat) => ({
+            title: cat,
+            items: visible.filter((i) => i.category === cat),
+          }))
+          .filter((s) => s.items.length > 0)
+      : [
+          {
+            title: null,
+            items: visible.filter((i) => i.category === selectedCategory),
+          },
+        ];
 
   return (
-    <div className="min-h-dvh bg-(--bg) sm:bg-[#06080d] sm:flex sm:justify-center">
+    <div className="min-h-dvh bg-(--bg) sm:bg-[#181c25] sm:flex sm:justify-center">
       <div className="w-full max-w-130 bg-(--bg) min-h-dvh flex flex-col sm:shadow-2xl">
-
         {/* Header */}
         <header className="sticky top-0 z-20 flex items-center justify-between px-3 h-16 bg-(--bg)/95 backdrop-blur-md border-b border-(--border)">
           <button
@@ -103,42 +138,35 @@ export default function MenuView({ items, categories, selectedCategory, cart, on
             <span className="text-(--text-muted) text-[9px] tracking-[3px] uppercase font-semibold">
               Cine Drive-in
             </span>
-            <span className="text-(--text-primary) font-bold text-lg">Cardápio</span>
+            <span className="text-(--text-primary) font-bold text-lg">
+              Cardápio
+            </span>
           </div>
 
           <button
             onClick={onOpenCart}
-            className="relative flex flex-col items-center gap-0.5 cursor-pointer bg-transparent border-none p-1"
+            className="relative cursor-pointer bg-transparent border-none p-2"
           >
-            <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${
-                cartCount > 0
-                  ? 'bg-(--primary)/10 border-(--primary)/30 text-(--primary)'
-                  : 'bg-(--bg-elevated) border-(--border) text-(--text-secondary)'
-              }`}
-            >
-              <FaShoppingCart size={15} />
-              {cartCount > 0 && (
-                <span className="text-xs font-bold">{formatBRL(cartTotal)}</span>
-              )}
-            </div>
-            <span className="text-(--text-muted) text-[9px] tracking-wide uppercase font-medium">
-              {cartCount > 0 ? `${cartCount} ite${cartCount > 1 ? 'ns' : 'm'}` : 'Pedido'}
-            </span>
+            <FaShoppingCart size={22} className="text-(--text-secondary)" />
+            {cartCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 leading-none">
+                {cartCount}
+              </span>
+            )}
           </button>
         </header>
 
         {/* Category tabs */}
         <div className="sticky top-16 z-19 bg-(--bg) border-b border-(--border) overflow-x-auto [scrollbar-width:none]">
           <div className="flex px-4 w-max">
-            {['Tudo', ...orderedCats].map((cat) => (
+            {["Tudo", ...orderedCats].map((cat) => (
               <button
                 key={cat}
                 onClick={() => onSelectCategory(cat)}
                 className={`bg-transparent border-none border-b-2 text-sm px-3.5 py-3 cursor-pointer whitespace-nowrap transition-colors duration-150 ${
                   selectedCategory === cat
-                    ? 'text-(--primary) border-b-(--primary) font-semibold'
-                    : 'text-(--text-secondary) border-b-transparent font-normal'
+                    ? "text-(--primary) border-b-(--primary) font-semibold"
+                    : "text-(--text-secondary) border-b-transparent font-normal"
                 }`}
               >
                 {cat}
@@ -150,10 +178,12 @@ export default function MenuView({ items, categories, selectedCategory, cart, on
         {/* Item list */}
         <div className="px-4 py-5 pb-12 flex flex-col gap-7 flex-1">
           {sections.length === 0 && (
-            <p className="text-(--text-muted) text-center mt-10">Nenhum item disponível.</p>
+            <p className="text-(--text-muted) text-center mt-10">
+              Nenhum item disponível.
+            </p>
           )}
           {sections.map((section) => (
-            <div key={section.title ?? '__items'}>
+            <div key={section.title ?? "__items"}>
               {section.title && (
                 <h2 className="text-(--text-primary) text-lg font-bold m-0 mb-3 pb-2 border-b border-(--border)">
                   {section.title}
@@ -161,14 +191,17 @@ export default function MenuView({ items, categories, selectedCategory, cart, on
               )}
               <div className="flex flex-col gap-2.5">
                 {section.items.map((item) => (
-                  <ItemCard key={item.id} item={item} onClick={() => onSelectItem(item)} />
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    onClick={() => onSelectItem(item)}
+                  />
                 ))}
               </div>
             </div>
           ))}
         </div>
-
       </div>
     </div>
-  )
+  );
 }

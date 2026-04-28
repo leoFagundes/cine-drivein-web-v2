@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --bg:          #0c0e14;
-  --bg-surface:  #12151e;
-  --bg-elevated: #1a1e2c;
-  --bg-card:     #1f2333;
+  --bg: #0f1117;
+  --color-bg-surface: #181c25;
+  --color-bg-elevated: #1f2435;
+  --bg-card: #1f2333;
 
-  --text-primary:   #f0f2f8;
+  --text-primary: #f0f2f8;
   --text-secondary: #9ba3bf;
-  --text-muted:     #555d78;
+  --text-muted: #555d78;
 
-  --primary:       #0088c2;
+  --primary: #0088c2;
   --primary-light: rgba(0, 136, 194, 0.12);
   --primary-hover: #0077aa;
 
-  --gold:       #f5a623;
+  --gold: #f5a623;
   --gold-light: rgba(245, 166, 35, 0.12);
 
-  --border:       rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.07);
   --border-focus: rgba(0, 136, 194, 0.5);
 
   --success: #22c55e;
-  --error:   #ef4444;
+  --error: #ef4444;
   --warning: #f59e0b;
 
   --radius-sm: 6px;
@@ -71,7 +71,9 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 input:focus-visible {
