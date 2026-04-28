@@ -14,6 +14,7 @@ import {
 import { db } from "@/lib/firebase";
 import type { CartItem } from "@/types";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 
 const WHATSAPP_URL = "https://wa.me/556185119092";
 
@@ -61,6 +62,8 @@ export default function CartView({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const { success, error: toastError, info } = useToast();
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setName(localStorage.getItem("@cinedrive:name") ?? "");
@@ -100,9 +103,16 @@ export default function CartView({
       }));
 
       const locationData = (() => {
-        try { return JSON.parse(localStorage.getItem("@cinedrive:userLocation") ?? "null"); } catch { return null; }
+        try {
+          return JSON.parse(
+            localStorage.getItem("@cinedrive:userLocation") ?? "null",
+          );
+        } catch {
+          return null;
+        }
       })();
-      const distanceMeters: number | null = locationData?.distanceMeters ?? null;
+      const distanceMeters: number | null =
+        locationData?.distanceMeters ?? null;
 
       const orderRef = await addDoc(collection(db, "orders"), {
         orderNumber,
@@ -121,9 +131,18 @@ export default function CartView({
       });
 
       onClearCart();
-      const saved = JSON.parse(localStorage.getItem("@cinedrive:orders") ?? "[]") as { id: string; number: number }[];
-      localStorage.setItem("@cinedrive:orders", JSON.stringify([...saved, { id: orderRef.id, number: orderNumber }]));
+      const saved = JSON.parse(
+        localStorage.getItem("@cinedrive:orders") ?? "[]",
+      ) as { id: string; number: number }[];
+      localStorage.setItem(
+        "@cinedrive:orders",
+        JSON.stringify([...saved, { id: orderRef.id, number: orderNumber }]),
+      );
       router.push(`/pedido?id=${orderRef.id}&success=1`);
+      success(
+        "Pedido finalizado com sucesso.",
+        "Vamos começar a preparar o seu pedido!",
+      );
     } catch (err) {
       console.error(err);
       setError("Erro ao finalizar pedido. Tente novamente.");
@@ -218,15 +237,26 @@ export default function CartView({
                       </div>
 
                       {extraGroups.map((g) => (
-                        <p key={g.label} className="text-[11px] m-0 mt-0.5 leading-snug">
-                          <span className="text-(--text-muted) font-medium">{g.label}: </span>
-                          <span className="text-(--primary)">{g.values.join(", ")}</span>
+                        <p
+                          key={g.label}
+                          className="text-[11px] m-0 mt-0.5 leading-snug"
+                        >
+                          <span className="text-(--text-muted) font-medium">
+                            {g.label}:{" "}
+                          </span>
+                          <span className="text-(--primary)">
+                            {g.values.join(", ")}
+                          </span>
                         </p>
                       ))}
                       {item.observation && (
                         <p className="text-[11px] m-0 mt-0.5 leading-snug">
-                          <span className="text-(--text-muted) font-medium">Obs: </span>
-                          <span className="text-(--text-muted) italic">{item.observation}</span>
+                          <span className="text-(--text-muted) font-medium">
+                            Obs:{" "}
+                          </span>
+                          <span className="text-(--text-muted) italic">
+                            {item.observation}
+                          </span>
                         </p>
                       )}
 

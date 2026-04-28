@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { FaArrowLeft, FaCheck } from "react-icons/fa";
 import type { StockItem, CartItem, Subitem, AdditionalGroup } from "@/types";
+import { useToast } from "@/components/ui/Toast";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -48,6 +49,8 @@ interface Props {
 export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
   const [observation, setObservation] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const { success, error: toastError, info } = useToast();
+
   const [selections, setSelections] = useState<
     Record<AdditionalGroup, string | null>
   >({
@@ -83,6 +86,7 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
         (s) => groupIds.includes(s.id) && s.isVisible,
       );
       if (available.length > 0 && !selections[key]) {
+        toastError("Escolha um acompanhamento!");
         setFormError(`Escolha uma opção para "${label}".`);
         return;
       }
@@ -111,6 +115,8 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
         ? getSelectedName("additionals_sweet")
         : undefined,
     });
+
+    info(`${item.name} adicionado ao carrinho!`);
   }
 
   return (

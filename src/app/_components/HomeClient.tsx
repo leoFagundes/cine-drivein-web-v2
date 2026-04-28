@@ -16,6 +16,7 @@ import SpotHelpModal from "./SpotHelpModal";
 import LocationModal from "./LocationModal";
 import { FaWhatsapp, FaChevronRight, FaReceipt } from "react-icons/fa";
 import { BsInfoCircleFill } from "react-icons/bs";
+import { useToast } from "@/components/ui/Toast";
 
 const WHATSAPP_URL = "https://wa.me/556185119092";
 
@@ -132,6 +133,7 @@ export default function HomeClient() {
   >([]);
   const [showLocation, setShowLocation] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
+  const { success, error: toastError, info } = useToast();
 
   function handleAllowLocation() {
     setLocLoading(true);
@@ -151,6 +153,7 @@ export default function HomeClient() {
           setShowLocation,
           position,
         );
+        success("Bem-vindo! Aproveite 🍿");
       },
       (err) => {
         console.warn("Geolocation error:", err.code, err.message);
@@ -158,9 +161,13 @@ export default function HomeClient() {
           // PERMISSION_DENIED — user explicitly said não, fica na tela inicial
           setLocLoading(false);
           setShowLocation(false);
+          toastError(
+            "Infelizmente você não comaprtilhou sua localização. Nos chame no WhatsApp para concluir o pedido",
+          );
         } else {
           // POSITION_UNAVAILABLE (2) ou TIMEOUT (3) — não foi escolha do usuário,
           // segue para o cardápio sem localização
+
           saveLocationAndProceed(router, setLocLoading, setShowLocation);
         }
       },
