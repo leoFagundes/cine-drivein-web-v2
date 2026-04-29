@@ -173,9 +173,9 @@ export default function HomeClient() {
         }
       },
       {
-        timeout: 10000, // 10s — mobile GPS can be slower than desktop
-        maximumAge: 60_000, // accept a cached position up to 1 min old
-        enableHighAccuracy: false, // don't wait for full GPS lock; network/wifi is fine
+        timeout: 30000, // 30s — cold GPS start on mobile can take 15-30s
+        maximumAge: 300_000, // accept cached position up to 5 min old
+        enableHighAccuracy: false, // network/wifi positioning is fine
       },
     );
   }
