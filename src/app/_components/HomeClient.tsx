@@ -250,7 +250,7 @@ export default function HomeClient() {
     return (
       <>
         <div className="flex flex-col items-center justify-center min-h-dvh gap-5 px-6 text-center bg-(--bg)">
-          <Logo />
+          <img src="images/logo-drivein.svg" alt="logo" />
           {activeOrders.length > 0 && (
             <div className="w-full max-w-xs flex flex-col gap-2">
               {activeOrders.map((order) => (
