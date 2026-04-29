@@ -5,7 +5,6 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
   onSnapshot,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -72,19 +71,24 @@ export default function CardapioClient() {
   }, []);
 
   useEffect(() => {
-    getDocs(collection(db, "subitems")).then((snap) => {
-      setSubitems(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Subitem[],
-      );
+    return onSnapshot(collection(db, "subitems"), (snap) => {
+      setSubitems(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Subitem[]);
     });
   }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "items"), (snap) => {
-      setItems(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StockItem[],
-      );
+      const loaded = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StockItem[];
+      setItems(loaded);
       setLoading(false);
+
+      // Preload all visible item photos in the background
+      loaded
+        .filter((i) => i.isVisible && i.photo)
+        .forEach((i) => {
+          const img = new window.Image();
+          img.src = i.photo!;
+        });
     });
     return unsub;
   }, []);
