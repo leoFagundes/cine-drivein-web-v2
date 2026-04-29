@@ -237,7 +237,6 @@ export default function HomeClient() {
     sessionStorage.setItem("@cinedrive:spot", spot);
     setShowLocation(true);
   }
-
   if (config === null) {
     return (
       <div className="flex items-center justify-center min-h-dvh bg-(--bg)">
