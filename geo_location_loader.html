@@ -1,0 +1,293 @@
+
+<style>
+:root {
+  --loc-blue: #1a73e8;
+  --loc-blue-dim: rgba(26,115,232,0.18);
+  --loc-blue-mid: rgba(26,115,232,0.45);
+}
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  padding: 2.5rem 1rem;
+}
+
+.demo-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* ── VARIANTE PRINCIPAL ── */
+.btn-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 28px 0 20px;
+  height: 52px;
+  border-radius: 26px;
+  border: none;
+  background: var(--loc-blue);
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+.btn-main::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer { to { transform: translateX(100%); } }
+
+/* ── MAPA MINI (css art) ── */
+.map-art {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #0d5cbf;
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.map-grid-h, .map-grid-v {
+  position: absolute;
+  background: rgba(255,255,255,0.08);
+}
+.map-grid-h { width: 100%; height: 1px; }
+.map-grid-h:nth-child(1) { top: 30%; }
+.map-grid-h:nth-child(2) { top: 60%; }
+.map-grid-v { height: 100%; width: 1px; }
+.map-grid-v:nth-child(3) { left: 35%; }
+.map-grid-v:nth-child(4) { left: 70%; }
+
+.map-road {
+  position: absolute;
+  background: rgba(255,255,255,0.18);
+  border-radius: 1px;
+}
+.r1 { width: 60%; height: 2px; top: 30%; left: 0; transform: translateY(-50%); }
+.r2 { width: 2px; height: 40%; top: 30%; left: 35%; transform: translateX(-50%); }
+.r3 { width: 45%; height: 2px; top: 60%; left: 35%; transform: translateY(-50%); }
+
+.radar-wrap {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.radar-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.9);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: radar-out 2.4s ease-out infinite;
+}
+.radar-ring:nth-child(1) { width: 10px; height: 10px; animation-delay: 0s; }
+.radar-ring:nth-child(2) { width: 20px; height: 20px; animation-delay: 0.5s; }
+.radar-ring:nth-child(3) { width: 32px; height: 32px; animation-delay: 1s; }
+@keyframes radar-out {
+  0%   { transform: translate(-50%,-50%) scale(0.2); opacity: 1; }
+  70%  { opacity: 0.2; }
+  100% { transform: translate(-50%,-50%) scale(1); opacity: 0; }
+}
+.radar-pin {
+  width: 6px; height: 6px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pin-pulse 1.5s ease-in-out infinite;
+}
+@keyframes pin-pulse {
+  0%, 100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  50% { opacity: 0.6; transform: translate(-50%,-50%) scale(0.75); }
+}
+
+/* ── TEXTO PRINCIPAL ── */
+.btn-text { display: flex; flex-direction: column; gap: 2px; }
+.btn-label { font-size: 14px; font-weight: 500; color: #fff; font-family: var(--font-sans); white-space: nowrap; }
+.btn-sub { font-size: 11px; color: rgba(255,255,255,0.6); font-family: var(--font-sans); display: flex; align-items: center; gap: 5px; }
+
+.signal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.signal-bars span {
+  width: 3px;
+  background: rgba(255,255,255,0.55);
+  border-radius: 1px;
+  animation: bar-blink 1.4s ease-in-out infinite;
+}
+.signal-bars span:nth-child(1) { height: 4px; animation-delay: 0s; }
+.signal-bars span:nth-child(2) { height: 7px; animation-delay: 0.2s; }
+.signal-bars span:nth-child(3) { height: 10px; animation-delay: 0.4s; }
+@keyframes bar-blink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; background: rgba(255,255,255,0.95); }
+}
+
+.coord-ticker {
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+/* ── VARIANTE COMPACT / OUTLINE ── */
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px 0 14px;
+  height: 40px;
+  border-radius: 20px;
+  border: 1.5px solid var(--loc-blue);
+  background: var(--loc-blue-dim);
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+.btn-outline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(26,115,232,0.12), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
+}
+
+.pin-icon {
+  width: 18px; height: 22px;
+  position: relative;
+  flex-shrink: 0;
+}
+.pin-body {
+  width: 14px; height: 14px;
+  border: 2px solid var(--loc-blue);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  position: absolute;
+  top: 0; left: 2px;
+  animation: pin-wobble 2s ease-in-out infinite;
+}
+@keyframes pin-wobble {
+  0%, 100% { transform: rotate(-45deg) translateY(0); }
+  30% { transform: rotate(-45deg) translateY(-3px); }
+  60% { transform: rotate(-45deg) translateY(-1px); }
+}
+.pin-dot {
+  width: 4px; height: 4px;
+  background: var(--loc-blue);
+  border-radius: 50%;
+  position: absolute;
+  top: 5px; left: 7px;
+  animation: pin-wobble 2s ease-in-out infinite;
+}
+.pin-shadow {
+  width: 8px; height: 3px;
+  background: var(--loc-blue-mid);
+  border-radius: 50%;
+  position: absolute;
+  bottom: 0; left: 5px;
+  animation: shadow-pulse 2s ease-in-out infinite;
+}
+@keyframes shadow-pulse {
+  0%, 100% { opacity: 0.4; transform: scaleX(1); }
+  30% { opacity: 0.15; transform: scaleX(0.6); }
+}
+
+.outline-text {
+  display: flex; flex-direction: column; gap: 1px;
+}
+.outline-label { font-size: 13px; font-weight: 500; color: var(--loc-blue); font-family: var(--font-sans); }
+.outline-sub { font-size: 10px; color: var(--color-text-tertiary); font-family: var(--font-mono); }
+
+.dot-loader span {
+  display: inline-block;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--loc-blue);
+  margin: 0 1.5px;
+  vertical-align: middle;
+  animation: dot-wave 1.2s ease-in-out infinite;
+}
+.dot-loader span:nth-child(1) { animation-delay: 0s; }
+.dot-loader span:nth-child(2) { animation-delay: 0.18s; }
+.dot-loader span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes dot-wave {
+  0%, 100% { opacity: 0.2; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+</style>
+
+<div class="wrap">
+
+  <div>
+    <div class="demo-tag">solid — mapa + radar + sinal GPS</div>
+    <button class="btn-main" disabled>
+      <div class="map-art">
+        <div class="map-grid-h"></div>
+        <div class="map-grid-h"></div>
+        <div class="map-grid-v"></div>
+        <div class="map-grid-v"></div>
+        <div class="map-road r1"></div>
+        <div class="map-road r2"></div>
+        <div class="map-road r3"></div>
+        <div class="radar-wrap">
+          <div class="radar-ring"></div>
+          <div class="radar-ring"></div>
+          <div class="radar-ring"></div>
+          <div class="radar-pin"></div>
+        </div>
+      </div>
+      <div class="btn-text">
+        <span class="btn-label">Buscando sua localização</span>
+        <span class="btn-sub">
+          <span class="signal-bars"><span></span><span></span><span></span></span>
+          <span class="coord-ticker" id="coords">aguardando GPS...</span>
+        </span>
+      </div>
+    </button>
+  </div>
+
+  <div>
+    <div class="demo-tag">outline — pin animado + coordenadas</div>
+    <button class="btn-outline" disabled>
+      <div class="pin-icon">
+        <div class="pin-body"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-shadow"></div>
+      </div>
+      <div class="outline-text">
+        <span class="outline-label">Localizando<span class="dot-loader" style="margin-left:4px;"><span></span><span></span><span></span></span></span>
+        <span class="outline-sub" id="coords2">-- ° lat, -- ° lon</span>
+      </div>
+    </button>
+  </div>
+
+</div>
+
+<script>
+const coords1 = document.getElementById('coords');
+const coords2 = document.getElementById('coords2');
+const latBase = -15.7801, lonBase = -47.9292;
+let t = 0;
+setInterval(() => {
+  t += 0.3;
+  const lat = (latBase + Math.sin(t) * 0.0008).toFixed(4);
+  const lon = (lonBase + Math.cos(t * 0.7) * 0.0008).toFixed(4);
+  coords1.textContent = `${lat}°, ${lon}°`;
+  coords2.textContent = `${lat}° lat, ${lon}° lon`;
+}, 600);
+</script>

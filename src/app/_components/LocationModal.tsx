@@ -24,7 +24,7 @@ export default function LocationModal({ onAllow, loading }: Props) {
             pedidos inválidos, solicitamos sua localização.
           </p>
 
-          <p className="text-(--text-secondary) text-sm leading-relaxed m-0">
+          <p className="text-(--text-muted) text-sm leading-relaxed m-0">
             Realizar pedidos online com o objetivo deliberado de prejudicar um
             estabelecimento, gerando prejuízo financeiro sem a intenção real de
             consumir o produto ou serviço, pode ser enquadrado como crime
@@ -41,8 +41,42 @@ export default function LocationModal({ onAllow, loading }: Props) {
         {/* Actions — outside scroll area, always visible */}
         <div className="px-6 pb-6 pt-2 flex flex-col gap-3 border-t border-(--border)">
           {loading ? (
-            <div className="flex items-center justify-center py-4 bg-(--bg)">
-              <div className="w-4 h-4 rounded-full border-2 border-(--border) border-t-(--primary) animate-spin" />
+            // <div className="flex items-center justify-center py-4 bg-(--bg)">
+            //   <div className="w-4 h-4 rounded-full border-2 border-(--border) border-t-(--primary) animate-spin" />
+            // </div>
+            <div className="wrap">
+              <div>
+                <button className="btn-main" disabled>
+                  <div className="map-art">
+                    <div className="map-grid-h"></div>
+                    <div className="map-grid-h"></div>
+                    <div className="map-grid-v"></div>
+                    <div className="map-grid-v"></div>
+                    <div className="map-road r1"></div>
+                    <div className="map-road r2"></div>
+                    <div className="map-road r3"></div>
+                    <div className="radar-wrap">
+                      <div className="radar-ring"></div>
+                      <div className="radar-ring"></div>
+                      <div className="radar-ring"></div>
+                      <div className="radar-pin"></div>
+                    </div>
+                  </div>
+                  <div className="btn-text">
+                    <span className="btn-label">Buscando sua localização</span>
+                    <span className="btn-sub">
+                      <span className="signal-bars">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </span>
+                      <span className="coord-ticker" id="coords">
+                        aguardando GPS...
+                      </span>
+                    </span>
+                  </div>
+                </button>
+              </div>
             </div>
           ) : (
             <button

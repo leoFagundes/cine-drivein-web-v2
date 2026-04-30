@@ -181,6 +181,11 @@ export default function HomeClient() {
   }
 
   useEffect(() => {
+    const img = new window.Image();
+    img.src = "/images/ilustrative-spot-photo3.png";
+  }, []);
+
+  useEffect(() => {
     type SavedOrder = { id: string; number: number };
     const saved: SavedOrder[] = JSON.parse(
       localStorage.getItem("@cinedrive:orders") ?? "[]",
