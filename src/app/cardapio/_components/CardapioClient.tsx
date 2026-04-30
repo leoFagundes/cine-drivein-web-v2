@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import {
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-} from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { StockItem, CartItem, Subitem } from "@/types";
 import { useRouter } from "next/navigation";
@@ -37,6 +32,7 @@ export default function CardapioClient() {
   const [cart, setCart] = useState<CartItem[]>(loadCart);
   const [loading, setLoading] = useState(true);
   const pushedHistory = useRef(false);
+  const savedScrollY = useRef(0);
 
   // Intercept browser back button while inside item/cart view
   useEffect(() => {
@@ -72,14 +68,26 @@ export default function CardapioClient() {
 
   useEffect(() => {
     return onSnapshot(collection(db, "subitems"), (snap) => {
-      setSubitems(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Subitem[]);
+      setSubitems(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Subitem[],
+      );
     });
   }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "items"), (snap) => {
-      const loaded = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StockItem[];
-      setItems(loaded);
+      const loaded = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as StockItem[];
+
+      // Within each category, featured items (isFeatured: true) come first
+      const sorted = [...loaded].sort((a, b) => {
+        if (a.category !== b.category) return 0;
+        return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
+      });
+
+      setItems(sorted);
       setLoading(false);
 
       // Preload all visible item photos in the background
@@ -100,6 +108,11 @@ export default function CardapioClient() {
 
   function addToCart(item: CartItem) {
     persistCart([...cart, item]);
+  }
+
+  function addManyToCart(newItems: CartItem[]) {
+    // Usa o cart atual de uma vez só — evita closure stale ao fazer forEach(addToCart)
+    persistCart([...cart, ...newItems]);
   }
 
   function removeFromCart(draftId: string) {
@@ -147,8 +160,8 @@ export default function CardapioClient() {
         item={selectedItem}
         subitems={subitems}
         onBack={() => setView("menu")}
-        onAdd={(item) => {
-          addToCart(item);
+        onAdd={(newItems) => {
+          addManyToCart(newItems);
           setView("menu");
         }}
       />
@@ -162,7 +175,9 @@ export default function CardapioClient() {
       selectedCategory={selectedCategory}
       cart={cart}
       onSelectCategory={setSelectedCategory}
+      savedScrollY={savedScrollY}
       onSelectItem={(item) => {
+        savedScrollY.current = window.scrollY;
         setSelectedItem(item);
         setView("item");
       }}

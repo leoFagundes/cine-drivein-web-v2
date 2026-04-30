@@ -21,6 +21,23 @@ const GROUPS: { key: AdditionalGroup; label: string }[] = [
   { key: "additionals_sweet", label: "Sobremesa" },
 ];
 
+type UnitConfig = {
+  selections: Record<AdditionalGroup, string | null>;
+  observation: string;
+};
+
+function makeEmptyUnit(): UnitConfig {
+  return {
+    selections: {
+      additionals: null,
+      additionals_sauce: null,
+      additionals_drink: null,
+      additionals_sweet: null,
+    },
+    observation: "",
+  };
+}
+
 function Placeholder() {
   return (
     <div className="w-full h-full flex items-center justify-center bg-(--bg-elevated)">
@@ -43,81 +60,119 @@ interface Props {
   item: StockItem;
   subitems: Subitem[];
   onBack: () => void;
-  onAdd: (item: CartItem) => void;
+  onAdd: (items: CartItem[]) => void; // ← agora recebe array
 }
 
 export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
-  const [observation, setObservation] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const { success, error: toastError, info } = useToast();
-
-  const [selections, setSelections] = useState<
-    Record<AdditionalGroup, string | null>
-  >({
-    additionals: null,
-    additionals_sauce: null,
-    additionals_drink: null,
-    additionals_sweet: null,
-  });
+  const [units, setUnits] = useState<UnitConfig[]>([makeEmptyUnit()]);
   const [formError, setFormError] = useState("");
+  const { error: toastError, info } = useToast();
 
   const price = getPrice(item);
+  const quantity = units.length;
+  const total = price * quantity;
 
-  function select(group: AdditionalGroup, id: string) {
+  function updateUnit(index: number, patch: Partial<UnitConfig>) {
     setFormError("");
-    setSelections((prev) => ({
-      ...prev,
-      [group]: prev[group] === id ? null : id,
-    }));
+    setUnits((prev) =>
+      prev.map((u, i) => (i === index ? { ...u, ...patch } : u)),
+    );
   }
 
-  function getSelectedName(group: AdditionalGroup): string[] {
-    const id = selections[group];
+  function selectAdditional(
+    unitIndex: number,
+    group: AdditionalGroup,
+    id: string,
+  ) {
+    setFormError("");
+    setUnits((prev) =>
+      prev.map((u, i) =>
+        i === unitIndex
+          ? {
+              ...u,
+              selections: {
+                ...u.selections,
+                [group]: u.selections[group] === id ? null : id,
+              },
+            }
+          : u,
+      ),
+    );
+  }
+
+  function addUnit() {
+    if (quantity >= 10) return;
+    setUnits((prev) => [...prev, makeEmptyUnit()]);
+  }
+
+  function removeUnit() {
+    if (quantity <= 1) return;
+    setUnits((prev) => prev.slice(0, -1));
+  }
+
+  function getSelectedName(unit: UnitConfig, group: AdditionalGroup): string[] {
+    const id = unit.selections[group];
     if (!id) return [];
     const sub = subitems.find((s) => s.id === id);
     return sub ? [sub.name] : [];
   }
 
   function handleAdd() {
-    for (const { key, label } of GROUPS) {
-      const groupIds = item[key];
-      if (groupIds.length === 0) continue;
-      const available = subitems.filter(
-        (s) => groupIds.includes(s.id) && s.isVisible,
-      );
-      if (available.length > 0 && !selections[key]) {
-        toastError("Escolha um acompanhamento!");
-        setFormError(`Escolha uma opção para "${label}".`);
-        return;
+    // Validate every unit
+    for (let i = 0; i < units.length; i++) {
+      for (const { key, label } of GROUPS) {
+        const groupIds = item[key];
+        if (groupIds.length === 0) continue;
+        const available = subitems.filter(
+          (s) => groupIds.includes(s.id) && s.isVisible,
+        );
+        if (available.length > 0 && !units[i].selections[key]) {
+          const unitLabel = quantity > 1 ? ` no item ${i + 1}` : "";
+          toastError(`Escolha um ${label}${unitLabel}!`);
+          setFormError(`Escolha uma opção para "${label}"${unitLabel}.`);
+          // Scroll to the offending unit
+          document
+            .getElementById(`unit-${i}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
       }
     }
 
-    onAdd({
-      // eslint-disable-next-line react-hooks/purity
-      draftId: `${item.id}-${Date.now()}`,
+    const cartItems: CartItem[] = units.map((unit, i) => ({
+      draftId: `${item.id}-${Date.now()}-${i}`,
       itemId: item.id,
       codItem: item.codItem,
       name: item.name,
       value: price,
-      quantity,
+      quantity: 1,
       photo: item.photo,
-      observation: observation.trim() || undefined,
-      additionals: getSelectedName("additionals").length
-        ? getSelectedName("additionals")
+      observation: unit.observation.trim() || undefined,
+      additionals: getSelectedName(unit, "additionals").length
+        ? getSelectedName(unit, "additionals")
         : undefined,
-      additionals_sauce: getSelectedName("additionals_sauce").length
-        ? getSelectedName("additionals_sauce")
+      additionals_sauce: getSelectedName(unit, "additionals_sauce").length
+        ? getSelectedName(unit, "additionals_sauce")
         : undefined,
-      additionals_drink: getSelectedName("additionals_drink").length
-        ? getSelectedName("additionals_drink")
+      additionals_drink: getSelectedName(unit, "additionals_drink").length
+        ? getSelectedName(unit, "additionals_drink")
         : undefined,
-      additionals_sweet: getSelectedName("additionals_sweet").length
-        ? getSelectedName("additionals_sweet")
+      additionals_sweet: getSelectedName(unit, "additionals_sweet").length
+        ? getSelectedName(unit, "additionals_sweet")
         : undefined,
-    });
+    }));
 
-    info(`${item.name} adicionado ao carrinho!`);
+    onAdd(cartItems);
+    info(
+      `${quantity}x ${item.name} adicionado${quantity > 1 ? "s" : ""} ao carrinho!`,
+    );
   }
+
+  const hasAnyGroup = GROUPS.some(({ key }) => {
+    const groupIds = item[key];
+    if (groupIds.length === 0) return false;
+    return subitems.some((s) => groupIds.includes(s.id) && s.isVisible);
+  });
 
   return (
     <div className="min-h-dvh bg-(--bg) sm:bg-[#181c25] sm:flex sm:justify-center">
@@ -136,11 +191,7 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
           ) : (
             <Placeholder />
           )}
-
-          {/* bottom gradient so content card blends in */}
           <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-(--bg) to-transparent" />
-
-          {/* floating back button */}
           <button
             onClick={onBack}
             className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white border border-white/10 cursor-pointer"
@@ -149,14 +200,12 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
           </button>
         </div>
 
-        {/* ── Content card (overlaps image) ───────────────────── */}
+        {/* ── Content card ────────────────────────────────────── */}
         <div className="-mt-10 rounded-t-3xl bg-(--bg) relative z-10 flex-1 flex flex-col">
-          {/* drag-handle pill */}
           <div className="flex justify-center pt-3 pb-1 shrink-0">
             <div className="w-10 h-1 rounded-full bg-(--border)" />
           </div>
 
-          {/* scrollable body */}
           <div className="flex-1 overflow-y-auto px-5 pt-3 pb-4 flex flex-col gap-5">
             {/* name + unit price */}
             <div className="flex items-start justify-between gap-3">
@@ -173,7 +222,6 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
               </div>
             </div>
 
-            {/* description */}
             {item.description && (
               <p className="text-(--text-secondary) text-sm leading-relaxed m-0">
                 {item.description}
@@ -182,79 +230,11 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
 
             <div className="h-px bg-(--border)" />
 
-            {/* ── Additionals ───────────────────────────────── */}
-            {GROUPS.map(({ key, label }) => {
-              const groupIds = item[key];
-              if (groupIds.length === 0) return null;
-              const available = subitems.filter(
-                (s) => groupIds.includes(s.id) && s.isVisible,
-              );
-              if (available.length === 0) return null;
-              const selected = selections[key];
-
-              return (
-                <div key={key} className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-(--text-primary) text-sm font-bold">
-                      {label}
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-(--error)/10 text-(--error)">
-                      Obrigatório
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {available.map((sub) => {
-                      const isSelected = selected === sub.id;
-                      return (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          onClick={() => select(key, sub.id)}
-                          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm border transition-all duration-150 cursor-pointer text-left font-medium ${
-                            isSelected
-                              ? "bg-(--primary)/12 border-(--primary) text-(--primary)"
-                              : "bg-(--bg-elevated) border-(--border) text-(--text-secondary) hover:border-(--text-muted)"
-                          }`}
-                        >
-                          <span
-                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                              isSelected
-                                ? "border-(--primary) bg-(--primary)"
-                                : "border-(--border)"
-                            }`}
-                          >
-                            {isSelected && (
-                              <FaCheck size={8} className="text-white" />
-                            )}
-                          </span>
-                          <span className="leading-snug">{sub.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* ── Observation ───────────────────────────────── */}
-            <div className="flex flex-col gap-2">
-              <span className="text-(--text-primary) text-sm font-bold">
-                Observação
-              </span>
-              <input
-                type="text"
-                placeholder="Ex: sem cebola, bem passado..."
-                value={observation}
-                onChange={(e) => setObservation(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-(--border) bg-(--bg-elevated) text-(--text-primary) text-sm outline-none placeholder:text-(--text-muted)"
-              />
-            </div>
-
-            {/* ── Quantity + Total ──────────────────────────── */}
+            {/* ── Quantity controls ─────────────────────────────── */}
             <div className="flex items-center justify-between gap-4 px-4 py-4 rounded-2xl bg-(--bg-elevated) border border-(--border)">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  onClick={removeUnit}
                   className="w-9 h-9 rounded-full border border-(--border) bg-(--bg) text-(--text-primary) text-xl cursor-pointer flex items-center justify-center select-none font-light"
                 >
                   −
@@ -263,7 +243,7 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
                   {quantity}
                 </span>
                 <button
-                  onClick={() => setQuantity((q) => Math.min(10, q + 1))}
+                  onClick={addUnit}
                   className="w-9 h-9 rounded-full border border-(--border) bg-(--bg) text-(--text-primary) text-xl cursor-pointer flex items-center justify-center select-none font-light"
                 >
                   +
@@ -274,12 +254,105 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
                   Total
                 </p>
                 <p className="text-(--primary) font-black text-2xl m-0 leading-tight tabular-nums">
-                  {formatBRL(price * quantity)}
+                  {formatBRL(total)}
                 </p>
               </div>
             </div>
 
-            {/* error */}
+            {/* ── Per-unit blocks ───────────────────────────────── */}
+            {units.map((unit, unitIndex) => (
+              <div
+                key={unitIndex}
+                id={`unit-${unitIndex}`}
+                className="flex flex-col gap-4 rounded-2xl border border-(--border) bg-(--bg-elevated) px-4 py-4"
+              >
+                {/* Unit header — only shown when quantity > 1 */}
+                {quantity > 1 && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-(--primary) text-white text-xs font-black flex items-center justify-center shrink-0">
+                      {unitIndex + 1}
+                    </span>
+                    <span className="text-(--text-primary) text-sm font-bold">
+                      Item {unitIndex + 1}
+                    </span>
+                  </div>
+                )}
+
+                {/* Additionals groups */}
+                {hasAnyGroup &&
+                  GROUPS.map(({ key, label }) => {
+                    const groupIds = item[key];
+                    if (groupIds.length === 0) return null;
+                    const available = subitems.filter(
+                      (s) => groupIds.includes(s.id) && s.isVisible,
+                    );
+                    if (available.length === 0) return null;
+                    const selected = unit.selections[key];
+
+                    return (
+                      <div key={key} className="flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-(--text-primary) text-sm font-bold">
+                            {label}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-(--error)/10 text-(--error)">
+                            Obrigatório
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {available.map((sub) => {
+                            const isSelected = selected === sub.id;
+                            return (
+                              <button
+                                key={sub.id}
+                                type="button"
+                                onClick={() =>
+                                  selectAdditional(unitIndex, key, sub.id)
+                                }
+                                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm border transition-all duration-150 cursor-pointer text-left font-medium ${
+                                  isSelected
+                                    ? "bg-(--primary)/12 border-(--primary) text-(--primary)"
+                                    : "bg-(--bg) border-(--border) text-(--text-secondary) hover:border-(--text-muted)"
+                                }`}
+                              >
+                                <span
+                                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                    isSelected
+                                      ? "border-(--primary) bg-(--primary)"
+                                      : "border-(--border)"
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <FaCheck size={8} className="text-white" />
+                                  )}
+                                </span>
+                                <span className="leading-snug">{sub.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {/* Observation */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-(--text-primary) text-sm font-bold">
+                    Observação{quantity > 1 ? ` — Item ${unitIndex + 1}` : ""}
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Ex: sem cebola, bem passado..."
+                    value={unit.observation}
+                    onChange={(e) =>
+                      updateUnit(unitIndex, { observation: e.target.value })
+                    }
+                    className="w-full px-4 py-3 rounded-xl border border-(--border) bg-(--bg) text-(--text-primary) text-sm outline-none placeholder:text-(--text-muted)"
+                  />
+                </div>
+              </div>
+            ))}
+
             {formError && (
               <p className="text-(--error) text-sm text-center m-0">
                 {formError}

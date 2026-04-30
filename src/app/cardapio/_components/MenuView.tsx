@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { FaArrowLeft, FaShoppingCart } from "react-icons/fa";
 import type { StockItem, CartItem } from "@/types";
@@ -39,10 +40,68 @@ interface Props {
   onSelectItem: (item: StockItem) => void;
   onOpenCart: () => void;
   onBack: () => void;
+  savedScrollY?: React.RefObject<number>;
 }
 
 function ItemCard({ item, onClick }: { item: StockItem; onClick: () => void }) {
   const price = getPrice(item);
+
+  if (item.isFeatured) {
+    return (
+      <button
+        onClick={onClick}
+        className="relative flex gap-3.5 w-full p-3.5 text-left transition-all duration-150 active:scale-[0.98] cursor-pointer rounded-xl"
+        style={{
+          background: "var(--bg-card, var(--bg-surface))",
+          border: "1.5px solid #BA7517",
+        }}
+      >
+        {/* Tab descendo do topo */}
+        <span
+          className="absolute -top-px right-3 text-[10px] font-bold uppercase tracking-wide leading-none"
+          style={{
+            background: "#BA7517",
+            color: "#fff7e6",
+            padding: "3px 10px 4px",
+            borderRadius: "0 0 6px 6px",
+          }}
+        >
+          ⭐ Destaque
+        </span>
+
+        <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-(--bg-elevated)">
+          {item.photo ? (
+            <Image
+              src={item.photo}
+              alt={item.name}
+              fill
+              sizes="96px"
+              className="object-cover"
+            />
+          ) : (
+            <Placeholder />
+          )}
+        </div>
+
+        <div className="flex flex-col justify-between flex-1 min-w-0 py-0.5">
+          <div>
+            <p className="text-(--text-primary) font-semibold text-[15px] m-0 leading-snug line-clamp-1">
+              {item.name}
+            </p>
+            {item.description && (
+              <p className="text-(--text-muted) text-xs leading-snug m-0 mt-1 line-clamp-2">
+                {item.description}
+              </p>
+            )}
+          </div>
+          <p className="text-(--primary) font-bold text-[15px] m-0 mt-2">
+            {formatBRL(price)}
+          </p>
+        </div>
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={onClick}
@@ -59,11 +118,6 @@ function ItemCard({ item, onClick }: { item: StockItem; onClick: () => void }) {
           />
         ) : (
           <Placeholder />
-        )}
-        {item.isFeatured && (
-          <span className="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-(--gold) text-black leading-none">
-            Destaque
-          </span>
         )}
       </div>
       <div className="flex flex-col justify-between flex-1 min-w-0 py-0.5">
@@ -85,6 +139,12 @@ function ItemCard({ item, onClick }: { item: StockItem; onClick: () => void }) {
   );
 }
 
+function sortItems(items: StockItem[]): StockItem[] {
+  return [...items].sort(
+    (a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0),
+  );
+}
+
 export default function MenuView({
   items,
   categories,
@@ -94,7 +154,14 @@ export default function MenuView({
   onSelectItem,
   onOpenCart,
   onBack,
+  savedScrollY,
 }: Props) {
+  useEffect(() => {
+    if (savedScrollY?.current) {
+      window.scrollTo({ top: savedScrollY.current, behavior: "instant" });
+    }
+  }, []);
+
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
   const visible = items.filter((i) => i.isVisible);
 
@@ -112,13 +179,15 @@ export default function MenuView({
       ? orderedCats
           .map((cat) => ({
             title: cat,
-            items: visible.filter((i) => i.category === cat),
+            items: sortItems(visible.filter((i) => i.category === cat)),
           }))
           .filter((s) => s.items.length > 0)
       : [
           {
             title: null,
-            items: visible.filter((i) => i.category === selectedCategory),
+            items: sortItems(
+              visible.filter((i) => i.category === selectedCategory),
+            ),
           },
         ];
 
@@ -163,8 +232,12 @@ export default function MenuView({
               <button
                 key={cat}
                 onClick={(e) => {
-                  onSelectCategory(cat)
-                  e.currentTarget.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' })
+                  onSelectCategory(cat);
+                  e.currentTarget.scrollIntoView({
+                    inline: "center",
+                    behavior: "smooth",
+                    block: "nearest",
+                  });
                 }}
                 className={`bg-transparent border-none border-b-2 text-sm px-3.5 py-3 cursor-pointer whitespace-nowrap transition-colors duration-150 ${
                   selectedCategory === cat

@@ -48,6 +48,25 @@ interface Props {
   onClearCart: () => void;
 }
 
+/**
+ * Agrupa itens do carrinho por itemId, preservando a ordem de inserção.
+ * Cada grupo representa um produto com N unidades independentes.
+ */
+function groupCart(cart: CartItem[]): { itemId: string; units: CartItem[] }[] {
+  const order: string[] = [];
+  const map = new Map<string, CartItem[]>();
+
+  for (const item of cart) {
+    if (!map.has(item.itemId)) {
+      order.push(item.itemId);
+      map.set(item.itemId, []);
+    }
+    map.get(item.itemId)!.push(item);
+  }
+
+  return order.map((id) => ({ itemId: id, units: map.get(id)! }));
+}
+
 export default function CartView({
   cart,
   onBack,
@@ -62,7 +81,7 @@ export default function CartView({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { success, error: toastError, info } = useToast();
+  const { success } = useToast();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -74,6 +93,8 @@ export default function CartView({
   const subtotal = cart.reduce((sum, i) => sum + i.value * i.quantity, 0);
   const serviceFee = Math.round(subtotal * 0.1 * 100) / 100;
   const total = subtotal + serviceFee;
+
+  const groups = groupCart(cart);
 
   async function handleFinalize() {
     if (cart.length === 0 || loading) return;
@@ -188,100 +209,134 @@ export default function CartView({
             </p>
           </div>
 
-          {/* Cart items */}
+          {/* Cart groups */}
           {cart.length === 0 ? (
             <p className="text-(--text-muted) text-center mt-8 text-sm">
               Seu pedido está vazio.
             </p>
           ) : (
-            <div className="rounded-xl border border-(--border) bg-(--bg-surface) overflow-hidden">
-              {cart.map((item, idx) => {
-                const extraGroups = [
-                  { label: "Acomp.", values: item.additionals ?? [] },
-                  { label: "Molho", values: item.additionals_sauce ?? [] },
-                  { label: "Bebida", values: item.additionals_drink ?? [] },
-                  { label: "Doce", values: item.additionals_sweet ?? [] },
-                ].filter((g) => g.values.length > 0);
+            <div className="flex flex-col gap-3">
+              {groups.map(({ itemId, units }) => {
+                const first = units[0];
+                const groupTotal = units.reduce(
+                  (sum, u) => sum + u.value * u.quantity,
+                  0,
+                );
+                const isMultiple = units.length > 1;
+
                 return (
                   <div
-                    key={item.draftId}
-                    className={`flex gap-3 px-4 py-3.5 ${idx < cart.length - 1 ? "border-b border-(--border)" : ""}`}
+                    key={itemId}
+                    className="rounded-xl border border-(--border) bg-(--bg-surface) overflow-hidden"
                   >
-                    {/* Photo */}
-                    <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-(--bg-elevated)">
-                      {item.photo ? (
-                        <Image
-                          src={item.photo}
-                          alt={item.name}
-                          fill
-                          sizes="56px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <Placeholder />
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-(--text-primary) font-semibold text-sm m-0 leading-snug">
-                          {item.name}
-                        </p>
-                        <button
-                          onClick={() => onRemoveItem(item.draftId)}
-                          className="bg-transparent border-none cursor-pointer text-(--text-muted) hover:text-(--error) transition-colors p-0.5 shrink-0"
-                        >
-                          <FaTrash size={13} />
-                        </button>
+                    {/* Group header: foto + nome + total do grupo */}
+                    <div className="flex items-center gap-3 px-4 pt-3.5 pb-3 border-b border-(--border)">
+                      <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-(--bg-elevated)">
+                        {first.photo ? (
+                          <Image
+                            src={first.photo}
+                            alt={first.name}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <Placeholder />
+                        )}
                       </div>
-
-                      {extraGroups.map((g) => (
-                        <p
-                          key={g.label}
-                          className="text-[11px] m-0 mt-0.5 leading-snug"
-                        >
-                          <span className="text-(--text-muted) font-medium">
-                            {g.label}:{" "}
-                          </span>
-                          <span className="text-(--primary)">
-                            {g.values.join(", ")}
-                          </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-(--text-primary) font-bold text-sm m-0 leading-snug">
+                          {first.name}
                         </p>
-                      ))}
-                      {item.observation && (
-                        <p className="text-[11px] m-0 mt-0.5 leading-snug">
-                          <span className="text-(--text-muted) font-medium">
-                            Obs:{" "}
-                          </span>
-                          <span className="text-(--text-muted) italic">
-                            {item.observation}
-                          </span>
+                        <p className="text-(--text-muted) text-xs m-0 mt-0.5">
+                          {isMultiple
+                            ? `${units.length} unidades · ${formatBRL(groupTotal)}`
+                            : formatBRL(groupTotal)}
                         </p>
-                      )}
-
-                      {/* Quantity controls + price */}
-                      <div className="flex items-center gap-2 mt-2.5">
-                        <button
-                          onClick={() => onUpdateQuantity(item.draftId, -1)}
-                          className="w-7 h-7 rounded-full border border-(--border) bg-(--bg-elevated) text-(--text-primary) text-base cursor-pointer flex items-center justify-center shrink-0 select-none leading-none"
-                        >
-                          −
-                        </button>
-                        <span className="text-(--text-primary) font-bold text-sm w-5 text-center">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => onUpdateQuantity(item.draftId, 1)}
-                          className="w-7 h-7 rounded-full border border-(--border) bg-(--bg-elevated) text-(--text-primary) text-base cursor-pointer flex items-center justify-center shrink-0 select-none leading-none"
-                        >
-                          +
-                        </button>
-                        <span className="text-(--text-primary) font-bold text-sm ml-auto">
-                          {formatBRL(item.value * item.quantity)}
-                        </span>
                       </div>
                     </div>
+
+                    {/* Individual units */}
+                    {units.map((unit, unitIdx) => {
+                      const extraGroups = [
+                        { label: "Acomp.", values: unit.additionals ?? [] },
+                        {
+                          label: "Molho",
+                          values: unit.additionals_sauce ?? [],
+                        },
+                        {
+                          label: "Bebida",
+                          values: unit.additionals_drink ?? [],
+                        },
+                        { label: "Doce", values: unit.additionals_sweet ?? [] },
+                      ].filter((g) => g.values.length > 0);
+
+                      return (
+                        <div
+                          key={unit.draftId}
+                          className={`flex items-start gap-3 px-4 py-3 ${
+                            unitIdx < units.length - 1
+                              ? "border-b border-(--border)"
+                              : ""
+                          }`}
+                        >
+                          {/* Badge de número — só aparece quando há múltiplas unidades */}
+                          {isMultiple && (
+                            <span className="w-5 h-5 rounded-full bg-(--primary)/15 text-(--primary) text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                              {unitIdx + 1}
+                            </span>
+                          )}
+
+                          <div className="flex-1 min-w-0">
+                            {/* Adicionais */}
+                            {extraGroups.length > 0 ? (
+                              extraGroups.map((g) => (
+                                <p
+                                  key={g.label}
+                                  className="text-[11px] m-0 leading-snug"
+                                >
+                                  <span className="text-(--text-muted) font-medium">
+                                    {g.label}:{" "}
+                                  </span>
+                                  <span className="text-(--primary)">
+                                    {g.values.join(", ")}
+                                  </span>
+                                </p>
+                              ))
+                            ) : (
+                              <p className="text-[11px] text-(--text-muted) italic m-0">
+                                Sem adicionais
+                              </p>
+                            )}
+
+                            {/* Observação */}
+                            {unit.observation && (
+                              <p className="text-[11px] m-0 mt-0.5 leading-snug">
+                                <span className="text-(--text-muted) font-medium">
+                                  Obs:{" "}
+                                </span>
+                                <span className="text-(--text-muted) italic">
+                                  {unit.observation}
+                                </span>
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Preço unitário + lixeira */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-(--text-primary) font-semibold text-sm">
+                              {formatBRL(unit.value)}
+                            </span>
+                            <button
+                              onClick={() => onRemoveItem(unit.draftId)}
+                              className="bg-transparent border-none cursor-pointer text-(--text-muted) hover:text-(--error) transition-colors p-0.5"
+                            >
+                              <FaTrash size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
