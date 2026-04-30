@@ -9,7 +9,10 @@ import {
   query,
   where,
   documentId,
+  orderBy,
+  limit,
 } from "firebase/firestore";
+import type { Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { StoreStatus } from "@/types";
 import SpotHelpModal from "./SpotHelpModal";
@@ -77,7 +80,6 @@ function getDistanceInKm(
 const TARGET_LAT = -15.778017634025696;
 const TARGET_LNG = -47.89792262166641;
 
-/** Saves location data and navigates to /cardapio */
 function saveLocationAndProceed(
   router: ReturnType<typeof useRouter>,
   setLocLoading: (v: boolean) => void,
@@ -100,8 +102,6 @@ function saveLocationAndProceed(
       }),
     );
   } else {
-    // Permission denied or geolocation unavailable — save an explicit null entry
-    // so downstream code knows a location attempt was made but failed.
     localStorage.setItem(
       "@cinedrive:userLocation",
       JSON.stringify({
@@ -114,11 +114,114 @@ function saveLocationAndProceed(
       }),
     );
   }
-
   router.push("/cardapio");
   setLocLoading(false);
   setShowLocation(false);
 }
+
+// ─── Unread tracking ──────────────────────────────────────────────────────────
+
+// Key: "@cinedrive:lastSeen:<orderId>" → timestamp ms when user last opened the order.
+// Call this from the order page (OrderClient) on mount so the badge clears.
+export function markOrderSeen(orderId: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(`@cinedrive:lastSeen:${orderId}`, String(Date.now()));
+  }
+}
+
+function getLastSeen(orderId: string): number {
+  if (typeof window === "undefined") return Date.now();
+  return parseInt(
+    localStorage.getItem(`@cinedrive:lastSeen:${orderId}`) ?? "0",
+    10,
+  );
+}
+
+// Listens to the last 20 messages of an order and counts admin messages
+// that arrived after the user last viewed the order page.
+function useUnreadCount(orderId: string): number {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const lastSeen = getLastSeen(orderId);
+
+    const q = query(
+      collection(db, "orders", orderId, "messages"),
+      orderBy("createdAt", "desc"),
+      limit(20),
+    );
+
+    return onSnapshot(q, (snap) => {
+      const unread = snap.docs.filter((d) => {
+        const data = d.data();
+        if (data.sender !== "admin") return false;
+        const ts = (data.createdAt as Timestamp | null)?.toMillis() ?? 0;
+        return ts > lastSeen;
+      }).length;
+      setCount(unread);
+    });
+  }, [orderId]);
+
+  return count;
+}
+
+// ─── Active Order Card ────────────────────────────────────────────────────────
+
+function ActiveOrderCard({
+  order,
+  onClick,
+}: {
+  order: { id: string; number: number };
+  onClick: () => void;
+}) {
+  const unread = useUnreadCount(order.id);
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 p-4 rounded-xl bg-(--primary)/10 border cursor-pointer text-left transition-colors"
+      style={{
+        borderColor:
+          unread > 0
+            ? "rgba(239,68,68,0.4)"
+            : "rgba(var(--primary-rgb, 99,102,241),0.3)",
+      }}
+    >
+      {/* Icon with badge */}
+      <div className="relative w-9 h-9 shrink-0">
+        <div className="w-full h-full rounded-full bg-(--primary)/15 flex items-center justify-center">
+          <FaReceipt size={15} className="text-(--primary)" />
+        </div>
+        {unread > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </div>
+
+      {/* Text */}
+      <div className="flex-1 min-w-0">
+        <p className="text-(--primary) font-bold text-sm m-0 leading-snug">
+          Pedido #{order.number} em andamento
+        </p>
+        {unread > 0 ? (
+          <p className="text-red-400 text-xs m-0 mt-0.5 leading-snug font-medium animate-pulse">
+            {unread} mensagem{unread > 1 ? "s" : ""} não lida
+            {unread > 1 ? "s" : ""}
+          </p>
+        ) : (
+          <p className="text-(--text-muted) text-xs m-0 mt-0.5 leading-snug">
+            Toque para acompanhar e conversar
+          </p>
+        )}
+      </div>
+
+      <FaChevronRight size={12} className="text-(--primary) shrink-0" />
+    </button>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function HomeClient() {
   const router = useRouter();
@@ -133,20 +236,35 @@ export default function HomeClient() {
   >([]);
   const [showLocation, setShowLocation] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
-  const { success, error: toastError, info } = useToast();
+  const { success, error: toastError } = useToast();
+
+  async function handleShowLocation() {
+    if (navigator.permissions) {
+      try {
+        const status = await navigator.permissions.query({
+          name: "geolocation",
+        });
+        if (status.state === "denied") {
+          saveLocationAndProceed(router, setLocLoading, setShowLocation);
+          return;
+        }
+      } catch {
+        // permissions API not supported — fall through
+      }
+    }
+    setShowLocation(true);
+  }
 
   function handleAllowLocation() {
     setLocLoading(true);
 
     if (!navigator.geolocation) {
-      // Browser doesn't support geolocation at all
       saveLocationAndProceed(router, setLocLoading, setShowLocation);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        // Success: got coordinates
         saveLocationAndProceed(
           router,
           setLocLoading,
@@ -158,7 +276,6 @@ export default function HomeClient() {
       (err) => {
         console.warn("Geolocation error:", err.code, err.message);
         if (err.code === 1) {
-          // PERMISSION_DENIED — user explicitly said não, fica na tela inicial
           setLocLoading(false);
           setShowLocation(false);
           toastError(
@@ -166,17 +283,10 @@ export default function HomeClient() {
             "Fale com a gente no WhatsApp para concluir seu pedido.",
           );
         } else {
-          // POSITION_UNAVAILABLE (2) ou TIMEOUT (3) — não foi escolha do usuário,
-          // segue para o cardápio sem localização
-
           saveLocationAndProceed(router, setLocLoading, setShowLocation);
         }
       },
-      {
-        timeout: 30000, // 30s — cold GPS start on mobile can take 15-30s
-        maximumAge: 300_000, // accept cached position up to 5 min old
-        enableHighAccuracy: false, // network/wifi positioning is fine
-      },
+      { timeout: 30000, maximumAge: 300_000, enableHighAccuracy: false },
     );
   }
 
@@ -195,7 +305,7 @@ export default function HomeClient() {
     const ids = saved.map((o) => o.id);
     const q = query(collection(db, "orders"), where(documentId(), "in", ids));
 
-    const unsub = onSnapshot(q, (snap) => {
+    return onSnapshot(q, (snap) => {
       const activeIds = new Set(
         snap.docs.filter((d) => d.data().status === "active").map((d) => d.id),
       );
@@ -203,23 +313,19 @@ export default function HomeClient() {
       localStorage.setItem("@cinedrive:orders", JSON.stringify(stillActive));
       setActiveOrders(stillActive);
     });
-
-    return unsub;
   }, []);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "storeConfig", "main"), (snap) => {
+    return onSnapshot(doc(db, "storeConfig", "main"), (snap) => {
       setConfig(
         snap.exists() ? (snap.data() as StoreStatus) : ({} as StoreStatus),
       );
     });
-    return unsub;
   }, []);
 
   useEffect(() => {
     localStorage.setItem("@cinedrive:name", name.trim());
   }, [name]);
-
   useEffect(() => {
     localStorage.setItem("@cinedrive:phone", phone);
   }, [phone]);
@@ -240,8 +346,9 @@ export default function HomeClient() {
       return;
     }
     sessionStorage.setItem("@cinedrive:spot", spot);
-    setShowLocation(true);
+    handleShowLocation();
   }
+
   if (config === null) {
     return (
       <div className="flex items-center justify-center min-h-dvh bg-(--bg)">
@@ -250,38 +357,24 @@ export default function HomeClient() {
     );
   }
 
+  const orderCards = activeOrders.length > 0 && (
+    <div className="w-full max-w-xs flex flex-col gap-2">
+      {activeOrders.map((order) => (
+        <ActiveOrderCard
+          key={order.id}
+          order={order}
+          onClick={() => router.push(`/pedido?id=${order.id}`)}
+        />
+      ))}
+    </div>
+  );
+
   if (!config.isOpen) {
     return (
       <>
         <div className="flex flex-col items-center justify-center min-h-dvh gap-5 px-6 text-center bg-(--bg)">
           <img src="images/logo-drivein.svg" alt="logo" />
-          {activeOrders.length > 0 && (
-            <div className="w-full max-w-xs flex flex-col gap-2">
-              {activeOrders.map((order) => (
-                <button
-                  key={order.id}
-                  onClick={() => router.push(`/pedido?id=${order.id}`)}
-                  className="w-full flex items-center gap-3 p-4 rounded-xl bg-(--primary)/10 border border-(--primary)/30 cursor-pointer text-left"
-                >
-                  <div className="w-9 h-9 rounded-full bg-(--primary)/15 flex items-center justify-center shrink-0">
-                    <FaReceipt size={15} className="text-(--primary)" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-(--primary) font-bold text-sm m-0 leading-snug">
-                      Pedido #{order.number} em andamento
-                    </p>
-                    <p className="text-(--text-muted) text-xs m-0 mt-0.5 leading-snug">
-                      Toque para acompanhar e conversar
-                    </p>
-                  </div>
-                  <FaChevronRight
-                    size={12}
-                    className="text-(--primary) shrink-0"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
+          {orderCards}
           <div className="flex flex-col gap-1.5">
             <h2 className="text-(--text-primary) text-xl font-bold m-0">
               Estamos Fechados
@@ -316,33 +409,7 @@ export default function HomeClient() {
     <>
       <div className="flex flex-col items-center justify-center min-h-dvh gap-4 px-6 py-10 bg-(--bg)">
         <img src="images/logo-drivein.svg" alt="logo" />
-        {activeOrders.length > 0 && (
-          <div className="w-full max-w-xs flex flex-col gap-2">
-            {activeOrders.map((order) => (
-              <button
-                key={order.id}
-                onClick={() => router.push(`/pedido?id=${order.id}`)}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-(--primary)/10 border border-(--primary)/30 cursor-pointer text-left"
-              >
-                <div className="w-9 h-9 rounded-full bg-(--primary)/15 flex items-center justify-center shrink-0">
-                  <FaReceipt size={15} className="text-(--primary)" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-(--primary) font-bold text-sm m-0 leading-snug">
-                    Pedido #{order.number} em andamento
-                  </p>
-                  <p className="text-(--text-muted) text-xs m-0 mt-0.5 leading-snug">
-                    Toque para acompanhar e conversar
-                  </p>
-                </div>
-                <FaChevronRight
-                  size={12}
-                  className="text-(--primary) shrink-0"
-                />
-              </button>
-            ))}
-          </div>
-        )}
+        {orderCards}
         <p className="text-(--text-primary) text-base text-center m-0">
           Para fazer seu pedido, preencha
           <br />
@@ -390,8 +457,7 @@ export default function HomeClient() {
               onClick={() => setSpotModalOpen(true)}
               className="flex items-center gap-1 text-xs text-(--primary) underline bg-transparent border-none cursor-pointer p-0 w-fit"
             >
-              <BsInfoCircleFill size={12} />
-              Como encontrar minha vaga?
+              <BsInfoCircleFill size={12} /> Como encontrar minha vaga?
             </button>
           </div>
           {error && <p className="text-(--error) text-sm m-0">{error}</p>}

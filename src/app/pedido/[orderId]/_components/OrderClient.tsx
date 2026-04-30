@@ -20,6 +20,7 @@ import {
   FaPaperPlane,
   FaShoppingBag,
 } from "react-icons/fa";
+import { markOrderSeen } from "@/app/_components/HomeClient";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,7 +28,6 @@ interface OrderItem {
   name: string;
   quantity: number;
   value: number;
-  visibleValue?: number;
   photo?: string;
   observation?: string;
   additionals?: string[];
@@ -172,6 +172,11 @@ export default function OrderClient({
     programmaticScroll.current = true;
     el.scrollTo({ top: el.scrollHeight, behavior });
   }, []);
+
+  // ── Mark order as seen on mount — clears the unread badge on home screen ──
+  useEffect(() => {
+    markOrderSeen(orderId);
+  }, [orderId]);
 
   // ── Auto-hide success banner ───────────────────────────────────────────────
 
@@ -439,45 +444,35 @@ export default function OrderClient({
                           </p>
                         )}
                         <p className="text-(--text-muted) text-xs m-0 mt-1">
-                          {formatBRL((item.visibleValue ?? item.value) * item.quantity)}
+                          {formatBRL(item.value * item.quantity)}
                         </p>
                       </div>
                     </div>
                   );
                 })}
 
-                {(() => {
-                  const customerSubtotal = order.items.reduce(
-                    (sum, i) => sum + (i.visibleValue ?? i.value) * i.quantity,
-                    0,
-                  );
-                  const customerFee = Math.round(customerSubtotal * 0.1 * 100) / 100;
-                  const customerTotal = customerSubtotal + customerFee;
-                  return (
-                    <div className="border-t border-(--border) pt-2 mt-1 flex flex-col gap-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-(--text-muted)">Subtotal</span>
-                        <span className="text-(--text-secondary)">
-                          {formatBRL(customerSubtotal)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-(--text-muted)">
-                          Taxa de serviço (10%)
-                        </span>
-                        <span className="text-(--primary)">
-                          {formatBRL(customerFee)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm font-bold">
-                        <span className="text-(--text-primary)">Total</span>
-                        <span className="text-(--text-primary)">
-                          {formatBRL(customerTotal)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
+                <div className="border-t border-(--border) pt-2 mt-1 flex flex-col gap-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-(--text-muted)">Subtotal</span>
+                    <span className="text-(--text-secondary)">
+                      {formatBRL(order.subtotal)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-(--text-muted)">
+                      Taxa de serviço (10%)
+                    </span>
+                    <span className="text-(--primary)">
+                      {formatBRL(order.serviceFee)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold">
+                    <span className="text-(--text-primary)">Total</span>
+                    <span className="text-(--text-primary)">
+                      {formatBRL(order.total)}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
