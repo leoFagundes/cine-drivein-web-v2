@@ -21,20 +21,9 @@ import {
   FaShoppingBag,
 } from "react-icons/fa";
 import { markOrderSeen } from "@/app/_components/HomeClient";
+import { OrderItem } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface OrderItem {
-  name: string;
-  quantity: number;
-  value: number;
-  photo?: string;
-  observation?: string;
-  additionals?: string[];
-  additionals_sauce?: string[];
-  additionals_drink?: string[];
-  additionals_sweet?: string[];
-}
 
 type OrderStatus = "active" | "finished" | "canceled";
 
@@ -70,6 +59,19 @@ function formatTime(ts: Timestamp | null) {
   return ts
     .toDate()
     .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function getDisplayValue(item: OrderItem): number {
+  return item.visibleValue != null && item.visibleValue > 0
+    ? item.visibleValue
+    : item.value;
+}
+
+function getDisplayTotal(items: OrderItem[]): number {
+  return items.reduce(
+    (acc, item) => acc + getDisplayValue(item) * item.quantity,
+    0,
+  );
 }
 
 function renderText(raw: string): React.ReactNode[] {
@@ -323,6 +325,9 @@ export default function OrderClient({
   }
 
   const statusCfg = STATUS[order.status] ?? STATUS.active;
+  const clientSubtotal = getDisplayTotal(order.items);
+  const clientServiceFee = clientSubtotal * 0.1;
+  const clientTotal = clientSubtotal + clientServiceFee;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -444,7 +449,7 @@ export default function OrderClient({
                           </p>
                         )}
                         <p className="text-(--text-muted) text-xs m-0 mt-1">
-                          {formatBRL(item.value * item.quantity)}
+                          {formatBRL(getDisplayValue(item) * item.quantity)}
                         </p>
                       </div>
                     </div>
@@ -455,7 +460,7 @@ export default function OrderClient({
                   <div className="flex justify-between text-xs">
                     <span className="text-(--text-muted)">Subtotal</span>
                     <span className="text-(--text-secondary)">
-                      {formatBRL(order.subtotal)}
+                      {formatBRL(clientSubtotal)}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs">
@@ -463,13 +468,13 @@ export default function OrderClient({
                       Taxa de serviço (10%)
                     </span>
                     <span className="text-(--primary)">
-                      {formatBRL(order.serviceFee)}
+                      {formatBRL(clientServiceFee)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm font-bold">
                     <span className="text-(--text-primary)">Total</span>
                     <span className="text-(--text-primary)">
-                      {formatBRL(order.total)}
+                      {formatBRL(clientTotal)}
                     </span>
                   </div>
                 </div>

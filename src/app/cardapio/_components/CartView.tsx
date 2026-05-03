@@ -90,7 +90,10 @@ export default function CartView({
     setSpot(sessionStorage.getItem("@cinedrive:spot") ?? "");
   }, []);
 
-  const subtotal = cart.reduce((sum, i) => sum + i.value * i.quantity, 0);
+  const subtotal = cart.reduce(
+    (sum, i) => sum + (i.visibleValue ?? i.value) * i.quantity,
+    0,
+  );
   const serviceFee = Math.round(subtotal * 0.1 * 100) / 100;
   const total = subtotal + serviceFee;
 
@@ -113,10 +116,11 @@ export default function CartView({
         itemId: item.itemId,
         codItem: item.codItem,
         name: item.name,
-        value: item.value,
+        value: item.visibleValue ?? item.value,
         quantity: item.quantity,
         photo: item.photo ?? null,
         observation: item.observation ?? null,
+        printTwice: item.printTwice ?? false,
         additionals: item.additionals ?? [],
         additionals_sauce: item.additionals_sauce ?? [],
         additionals_drink: item.additionals_drink ?? [],

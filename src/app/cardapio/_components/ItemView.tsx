@@ -147,6 +147,7 @@ export default function ItemView({ item, subitems, onBack, onAdd }: Props) {
       value: price,
       quantity: 1,
       photo: item.photo,
+      printTwice: item.printTwice ?? false,
       observation: unit.observation.trim() || undefined,
       additionals: getSelectedName(unit, "additionals").length
         ? getSelectedName(unit, "additionals")

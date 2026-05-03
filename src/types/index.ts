@@ -1,6 +1,14 @@
 // ─── Site ─────────────────────────────────────────────────────────────────────
 
-export type FilmClassification = "L" | "6" | "10" | "12" | "14" | "16" | "18" | "";
+export type FilmClassification =
+  | "L"
+  | "6"
+  | "10"
+  | "12"
+  | "14"
+  | "16"
+  | "18"
+  | "";
 export type EventType = "" | "christmas" | "halloween" | "easter";
 export type SessionKey = "session1" | "session2" | "session3" | "session4";
 
@@ -76,6 +84,7 @@ export interface StockItem {
   photo?: string;
   isVisible: boolean;
   isFeatured: boolean;
+  printTwice?: boolean;
   additionals: string[];
   additionals_sauce: string[];
   additionals_drink: string[];
@@ -89,9 +98,11 @@ export interface OrderItem {
   codItem: string;
   name: string;
   value: number;
+  visibleValue?: number;
   quantity: number;
   photo?: string;
   observation?: string;
+  printTwice?: boolean;
   additionals?: string[];
   additionals_sauce?: string[];
   additionals_drink?: string[];
